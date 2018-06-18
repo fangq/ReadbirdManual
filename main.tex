@@ -1,0 +1,791 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amsbsy}
+\title{Redbird \-- a 3D finite element based non-linear image reconstruction algorithm \-- theory and implementation}
+
+\author{Qianqian Fang}
+
+\date{\today}
+
+
+\begin{document}
+\maketitle              % you need to define \title{..}
+
+Redbird-m is a MATLAB toolbox designed for solving the forward and inverse
+problems for diffuse optical tomography (DOT), with the additional support of 
+several other non-linear model-based imaging modalities. Redbird-m was ported from 
+Redbird - a FORTRAN90 based software written by the same author.
+In the forward modeling, a 3D finite element method (FEM)
+facilitated by an iterative multi-right-hand-side quasi-minimal residual (QMR) solver was used to model
+the forward solution for RF and CW light diffusion. The 3D images for tissue chromorphore 
+concentrations and tissue scattering coefficients were
+reconstructed with an iterative Gauss-Newton method where the
+Jacobian matrix was build by the nodal adjoint method. A simultaneous 
+source-detector (SD) coupling coefficient estimation process was 
+implemented in conjunction with the optical parameter reconstruction. 
+This document summarizes the mathematical treatment for the forward 
+and inverse problems used in this algorithm.
+
+\section{Mathematical derivations for the forward model}
+The diffusion equation in the time-domain can be expressed as
+\begin{equation}
+\label{eq:diffusionTD} -\nabla\cdot
+D(r)\nabla\Phi(r,t)+\mu_a(r)\Phi(r,t)+\frac{1}{c}\frac{\partial
+\Phi(r,t)}{\partial t}=S_0(r,t)
+\end{equation}
+where $D(r)=\frac{1}{3(\mu_a+\mu_s')}$ is the diffusion
+coefficient (unit cm); $c=\frac{c_0}{n}$ is the speed of light in the
+medium (unit cm/s); $S_0(r,t)$ is the source. With assumed time dependence
+$\exp(j\omega t)$, the frequency-domain (FD) diffusion equation can be
+written as
+\begin{equation}
+\label{eq:diffusionFD} -\nabla\cdot
+D(r)\nabla\Phi(r)+\left(\mu_a(r)+\frac{j\omega}{c}\right)\Phi(r)=S_0(r)
+\end{equation}
+where $\omega$ is the angular frequency and $\Phi(r)$ is the
+phasor of $\Phi(r,t)$.
+
+Integrating both sides of (\ref{eq:diffusionFD}) with a set of weight functions $\varphi_j(r) (j=1,...,M)$
+where $M$ is the total number of basis functions, over the forward space $\Omega$, subsequently, applying the following vector
+identity
+\begin{equation}
+\label{eq:veciden}\nabla\cdot f(r)\vec{g}(r)=f(r)\nabla\cdot
+\vec{g}(r)+\vec{g}(r)\cdot\nabla f(r)
+\end{equation}
+we get
+\begin{eqnarray}
+\label{eq:femstep1}
+-\int_{\Omega}{(D(r)\nabla^2\Phi(r))\varphi_j(r)dr}&-&\int_{\Omega}{\nabla D(r)\cdot\nabla\Phi(r)
+\varphi_j(r)dr}\\\nonumber &+&\int_{\Omega}
+{\left(\mu_a(r)+\frac{j\omega}{c}\right)\varphi_j(r)\Phi(r)dr}=\int_{\Omega}
+{S_0(r)\varphi_j(r)dr}
+\end{eqnarray}
+Assume $D(r)$ is constant for each forward element, i.e. element-based properties, 
+we have $\nabla D(r)=0$ and the second term in (\ref{eq:femstep1}) becomes zero. 
+However, if we define the optical properties on the nodes using a reconstruction mesh,
+the second term will be non-zero. In this case, we expand $D(r)$ and $\mu_{a}(r)$ by
+piece-wise linear basis functions
+\begin{equation}
+\label{eq:parammesh}D(r)=\sum_{i}D_i\phi_i(r) \\
+\mu_{a}(r)=\sum_{i}\mu_{a_i}\phi_i(r)
+\end{equation}
+
+as well as the Green's first identity
+\begin{equation}
+\label{eq:Green1} \int_{\Omega}{u(r)\nabla^2
+v(r)dr}=-\int_{\Omega}{\nabla u(r)\cdot\nabla
+v(r)dr}+\int_{\partial\Omega} {u(r)\nabla v(r)dr}
+\end{equation}
+we can rewrite (\ref{eq:diffusionFD}) as
+\begin{eqnarray}
+\label{eq:fem}
+\int_{\Omega}{D(r)\nabla\varphi_j(r)\cdot\nabla\Phi(r)dr}&-&\int_{\partial\Omega}{D(r)\varphi_j(r)\nabla\Phi(r)\cdot
+d\hat{r}}\\\nonumber &+&\int_{\Omega}
+{\left(\mu_a(r)+\frac{j\omega}{c}\right)\varphi_j(r)\Phi(r)dr}=\int_{\Omega}
+{S_0(r)\varphi_j(r)dr}
+\end{eqnarray}
+With Galerkin's method, i.e. the basis function is identical as
+the weight function, $\Phi(r)$ is expanded as
+$\Phi(r)=\sum_{i=1}^{4}\Phi_i\varphi_i(r)$ over each linear
+Largarange forward element, and Equ. (\ref{eq:fem}) becomes
+\begin{eqnarray}
+\label{eq:galerkin}\nonumber&&\sum_{i}\Phi_i\left(\left\langle
+D(r)\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle -
+\left\langle
+D(r)\nabla\varphi_i(r)\varphi_j(r)\right\rangle_{\partial\Omega}\right.
+\\&&+ \left.\left\langle
+\left(\mu_a(r)+
+\frac{j\omega}{c}\right)\varphi_i(r)\varphi_j(r)\right\rangle\right)=\left\langle
+S_0(r)\varphi_j(r)\right\rangle
+\end{eqnarray}
+where $\langle u(r)\rangle$ denotes $\int_{\Omega}u(r)dr$ and
+$\langle u(r)\rangle_{\partial\Omega}$ denotes
+$\int_{\partial\Omega}u(r) dr$.
+
+Expanding $\mu_a(r)$ and $D(r)$ on the parameter mesh basis as
+$\mu_a(r)=\sum_{k=1}^{4}\mu_a^k\phi_k(r)$ and
+$D(r)=\sum_{k=1}^{4}D_k\phi_k(r)$, we get the Galerkin weak form
+equation as
+\begin{eqnarray}
+\label{eq:weakform}\nonumber&&\sum_{i}\Phi_i\left(\sum_{k}D_k\left\langle
+\phi_k(r)\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle -
+\sum_{k}D_k\left\langle
+\phi_k(r)\nabla\varphi_i(r)\varphi_j(r)\right\rangle_{\partial\Omega}\right.
+\\&&\left.+\sum_{k}\left(\mu_{a}^k+\frac{j\omega}{c}\right)\left\langle\phi_k(r)\varphi_i(r)\varphi_j(r)\right\rangle\right)=\left\langle
+S_0(r)\varphi_j(r)\right\rangle
+\end{eqnarray}
+where $\phi_k$ is the basis function of the parameter mesh.
+
+\section{Boundary condition}
+
+If the extrapolation boundary condition is used, the boundary
+integration term in (\ref{eq:weakform}) is then dropped out,
+leaving
+\begin{eqnarray}
+\label{eq:weakformzerobd}\sum_{i}&&\Phi_i\left(\sum_{k}D_k\left\langle
+\phi_k(r)\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle\right.\\\nonumber
++&&\left.\sum_{k}\left(\mu_{a}^k+\frac{j\omega}{c}\right)\left\langle\phi_k(r)\varphi_i(r)\varphi_j(r)\right\rangle\right)=\left\langle
+S_0(r)\varphi_j(r)\right\rangle
+\end{eqnarray}
+
+However, it has been shown in Haskell 1994, the partial current boundary
+condition is more accurate. In this boundary condition, the fluence
+satisfies the following condition on the boundary $\partial\Omega$
+
+\begin{equation}
+\label{eq:partialcurrent} \left(\boldsymbol\Phi=l_s\nabla{\boldsymbol\Phi}\right)|_{\partial\Omega}
+\end{equation}
+where $l_s$ is defined in Eq. 2.4.1 in Haskell, as
+\begin{equation}
+l_s=\frac{1+R_{eff}}{1-R_{eff}}2D
+\end{equation}
+and $R_{eff}=\frac{R_\phi+R_j}{2-R_\phi+R_j}$ is the effective reflection coefficient, and 
+\begin{eqnarray}
+R_\phi &=& \int_0^{\pi/2}2\sin \theta \cos\theta R_{Fresnel(\theta)}d\theta\\
+R_j &=& \int_0^{\pi/2}3\sin \theta \cos^2\theta R_{Fresnel(\theta)}d\theta \\
+R_{Fresnel}(\theta) &=& \frac{1}{2}\left(\frac{n \cos\theta' - n_{out} \cos\theta}{n \cos\theta' + n_{out} \cos\theta}\right)^2 \\
+   &+&\frac{1}{2}\left(\frac{n \cos\theta - n_{out} \cos\theta'}{n \cos\theta + n_{out} \cos\theta'}\right)^2
+\end{eqnarray}
+
+Replacing $\nabla{\boldsymbol\Phi}=\boldsymbol\Phi/l_s$ to the boundary term in (\ref{eq:weakform}), we
+have
+
+\begin{eqnarray}
+\label{eq:weakformpartial}\nonumber&&\sum_{i}\Phi_i\left(\sum_{k}D_k\left\langle
+\phi_k(r)\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle -
+\sum_{k}\frac{1-R_{eff}}{2(1+R_{eff})}\left\langle
+\phi_k(r)\varphi_j(r)\right\rangle_{\partial\Omega}\right.
+\\&&\left.+\sum_{k}\left(\mu_{a}^k+\frac{j\omega}{c}\right)\left\langle\phi_k(r)\varphi_i(r)\varphi_j(r)\right\rangle\right)=\left\langle
+S_0(r)\varphi_j(r)\right\rangle
+\end{eqnarray}
+and the boundary integration $\langle\phi_k(r)\varphi_j(r)\rangle_{\partial\Omega}=\frac{A}{6}$ if $k=j$ 
+or $\frac{A}{12}$ if $k\ne j$. The general expression for the surface element integration is
+\begin{equation}
+\int_{\Omega_e}\varphi_1^l\varphi_2^m\varphi_3^ndr=\frac{l!m!n!}{(l+m+n+2)!}2A_e
+\end{equation}
+
+
+Equation (\ref{eq:weakformpartial}) is the final formula used in
+the reconstruction code.
+
+\section{Widefield illumination}
+When a light source is located outside of the domain, i.e. a wide-field source, at the boundary, the 
+in-bound flux, $J^-$ is no longer zero, thus, the boundary condition should be modified as
+\begin{equation}
+\label{eq:widefieldsrc} \left(\boldsymbol\Phi-l_s\nabla{\boldsymbol\Phi}\right)|_{\partial\Omega}=J^-
+\end{equation}
+Thus, we should replace $\nabla{\boldsymbol\Phi}$ by $(\boldsymbol\Phi - J^-)/l_s$ in (\ref{eq:weakform}), and we get
+\begin{eqnarray}\nonumber
+\label{eq:weakformwidefield}\nonumber&&\sum_{i}\Phi_i\left(\sum_{k}D_k\left\langle
+\phi_k(r)\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle -
+\sum_{k}\frac{1-R_{eff}}{2(1+R_{eff})}\left\langle
+\phi_k(r)\varphi_j(r)\right\rangle_{\partial\Omega}\right.
+\\&&\left.+\sum_{k}\left(\mu_{a}^k+\frac{j\omega}{c}\right)\left\langle\phi_k(r)\varphi_i(r)\varphi_j(r)\right\rangle\right)=\\\nonumber
+&& \left\langle S_0(r)\varphi_j(r)\right\rangle + \sum_k\frac{J^-_kD_k}{l_s}\langle\phi_k(r)\varphi_j(r)\rangle|_{\partial\Omega}
+\end{eqnarray}
+
+\section{Nodal and element-based adjoint method for computing the Jacobian matrix}
+Equation (\ref{eq:weakformpartial}) for each element written in the
+matrix form is
+\begin{equation}
+\label{eq:matrix} \mathbf{A}{\boldsymbol\Phi}=\mathbf{b}
+\end{equation}
+where the element of $\mathbf{A}$ can be written as
+\begin{equation}
+a_{i,j}=\sum_{i,j\in e}\left(\sum_{k=1}^4D_k\left\langle
+\phi_k(r)\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle+\sum_{k=1}^4\left(\mu_{a}^k+\frac{j\omega}{c}\right)\left\langle\phi_k(r)\varphi_i(r)\varphi_j(r)\right\rangle\right)
+\end{equation}
+for node-based FEM matrix, and 
+\begin{equation}
+a_{i,j}=\sum_{i,j\in e}\left(D_e\left\langle
+\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle+\left(\mu_{a}^{e}+\frac{j\omega}{c}\right)\left\langle\varphi_i(r)\varphi_j(r)\right\rangle\right)
+\end{equation}
+for element-based FEM matrix, where $D_e$ and $\mu_a^{e}$ are the diffusion and absorption coefficients 
+of the $e$-th element.
+
+Taking derivative of $\mu_a$ and $D$ on both sides of
+(\ref{eq:matrix}), we get
+\begin{eqnarray}
+\frac{\partial \mathbf{A}}{\partial
+\mu_a^k}{\boldsymbol\Phi}&=&-\mathbf{A}\frac{\partial {\boldsymbol\Phi}}{\partial \mu_a^k}\\
+\frac{\partial \mathbf{A}}{\partial
+D_k}{\boldsymbol\Phi}&=&-\mathbf{A}\frac{\boldsymbol\Phi}{\partial
+D^k}
+\end{eqnarray}
+where the elements of matrix $\frac{\partial \mathbf{A}}{\partial
+\mu_a^k}$ and $\frac{\partial \mathbf{A}}{\partial D_k}$ are
+written as
+\begin{eqnarray}
+k_{i,j}=\frac{\partial
+a_{i,j}}{\mu_a^k}&=&\left\langle\phi_k(r)\varphi_i(r)\varphi_j(r)\right\rangle\\
+h_{i,j}=\frac{\partial a_{i,j}}{D_k}&=&\left\langle
+\phi_k(r)\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle
+\end{eqnarray}
+respectively.
+
+Similarly, taking derivatives with respect to $D_e$ and $\mu_a^{e}$ yields
+\begin{eqnarray}
+k_{i,j}=\frac{\partial
+a_{i,j}}{\mu_a^{e}}&=&\left\langle\varphi_i(r)\varphi_j(r)\right\rangle\\
+h_{i,j}=\frac{\partial a_{i,j}}{D_e}&=&\left\langle
+\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle
+\end{eqnarray}
+respectively. Again, the angular bracket $\langle\cdot\rangle$ represents volume integration inside
+an element, i.e.
+\begin{equation}
+\langle f(r) \rangle=\int_{\Omega_e}f(r)dr
+\end{equation}
+Therefore, the deriatives to $\mu_a^e$ can be calculated using this relationship:
+\begin{equation}
+\int_{\Omega_e}\varphi_1^l\varphi_2^m\varphi_3^n\varphi_4^sdr=\frac{l!m!n!s!}{(l+m+n+s+3)!}6V_e
+\end{equation}
+As a result, for element-based $\mu_a$ Jacobian, we have
+\begin{equation}
+\mathbf{K}_e=\left[\frac{\partial a_{i,j}}{\mu_a^{e}}\right]=\sum_e\frac{V_e}{20}\left(
+\begin{array}{llll}
+2 & 1 & 1 & 1 \\
+1 & 2 & 1 & 1 \\
+1 & 1 & 2 & 1 \\
+1 & 1 & 1 & 2 
+\end{array}
+\right)
+\end{equation}
+For element-based $D$ Jacobian, we have
+\begin{eqnarray}\nonumber
+\mathbf{H}_e&=&\left[\frac{\partial
+a_{i,j}}{D^{e}}\right]\\&=&\sum_e\frac{1}{(6V_e)^2}\left(
+\begin{array}{llll}
+a_1a_1+b_1b_1+c_1c_1 & a_1a_2+b_1b_2+c_1c_2 & a_1a_3+b_1b_3+c_1c_3 & a_1a_4+b_1b_4+c_1c_4 \\
+a_2a_1+b_2b_1+c_2c_1 & a_2a_2+b_2b_2+c_2c_2 & a_2a_3+b_2b_3+c_2c_3 & a_2a_4+b_2b_4+c_2c_4 \\
+a_3a_1+b_3b_1+c_3c_1 & a_3a_2+b_3b_2+c_3c_2 & a_3a_3+b_3b_3+c_3c_3 & a_3a_4+b_3b_4+c_3c_4 \\
+a_4a_1+b_4b_1+c_4c_1 & a_4a_2+b_4b_2+c_4c_2 & a_4a_3+b_4b_3+c_4c_3 & a_4a_4+b_4b_4+c_4c_4
+\end{array}
+\right)
+\end{eqnarray}
+where $a_i,b_i,c_i (i=1,4)$ are the linear coefficients in the expressions of the basis functions $\varphi_i$ as
+\begin{equation}
+\left(
+\begin{array}{l}
+\varphi_1\\
+\varphi_2\\
+\varphi_3\\
+\varphi_4
+\end{array}\right)=\frac{1}{6V_e}\left(
+\begin{array}{llll}
+6V_{01} & a_1 & b_1 & c_1 \\
+6V_{02} & a_2 & b_2 & c_2 \\
+6V_{03} & a_3 & b_3 & c_3 \\
+6V_{04} & a_4 & b_4 & c_4 
+\end{array}
+\right)\left(
+\begin{array}{l}
+1\\
+x\\
+y\\
+z
+\end{array}\right)
+\end{equation}
+Here, the matrix is the inversion of the Jacobian ($\mathbf{J}_e$) of the tetrahedron, i.e.
+\begin{equation}\frac{1}{6V_e}
+\left(
+\begin{array}{llll}
+6V_{01} & a_1 & b_1 & c_1 \\
+6V_{02} & a_2 & b_2 & c_2 \\
+6V_{03} & a_3 & b_3 & c_3 \\
+6V_{04} & a_4 & b_4 & c_4 
+\end{array}
+\right)=\textrm{inv}\left(
+\begin{array}{llll}
+1 & 1 & 1 & 1 \\
+x_1 & x_2 & x_3 & x_4 \\
+y_1 & y_2 & y_3 & y_4 \\
+z_1 & z_2 & z_3 & z_4  
+\end{array}
+\right)=\textrm{inv}(\mathbf{J}_e)
+\end{equation}
+and the element volume $V_e=\textrm{det}(\mathbf{J}_e)/6$
+
+For the Jacobian corresponding to the $\mu_a^e$ in the $e$-th element, the 
+element-based Jacobian can be expressed as
+\begin{eqnarray}\nonumber
+J_{\mu_a}((s,r),e)&=&\frac{\partial
+\Phi_{s,r}}{d\mu_a^{e}}\\&=&\left(\mathbf{K}_e{\boldsymbol\Phi}_s^e\right)^T{\boldsymbol\Phi}_r^e
+\end{eqnarray}
+where vectors $\boldsymbol{\Phi}_s^e$ and $\boldsymbol{\Phi}_r^e$
+are defined by $\boldsymbol{\Phi}_s^e=\{\Phi_s(\vec{p}_k)\}$,
+$\boldsymbol{\Phi}_r^e=\{\Phi_r(\vec{p}_k)\}, (k=1,2,3,4)$,
+respectively.
+
+For the Jacobian corresponding to the $\tau$-th $\mu_a$, the nodal
+adjoint method was applied and the Jacobian for the measurement at
+the $r$-th detector with illumination of the $s$-th source is
+expressed as
+\begin{eqnarray}\nonumber
+J_{\mu_a}((s,r),\tau)&=&\frac{\partial
+\Phi_{s,r}}{d\mu_a^{\tau}}\\&=&\sum_{n\in\Omega_\tau}\left(\frac{\sum_{e\in\Omega_n}
+V_e}{4}\right)\phi(\vec{p}_n)\Phi_s(\vec{p}_n)\Phi_r(\vec{p}_n)
+\end{eqnarray}
+where $\sum_{n\in\Omega_\tau}$ refers to the summation over the
+forward nodes which fall inside $\Omega_\tau$ and
+$\sum_{e\in\Omega_n}$ refers to the summation over the forward
+elements that share the n-th forward node; $V_e$ is the volume of
+the element, $\Phi_s(\vec{p}_n)$ and $\Phi_r(\vec{p}_n)$ are the
+forward field and the adjoint field at the n-th forward node,
+respectively.
+
+The Jacobian with respect to $D$ is computed by the traditional
+element-based adjoint method, which is written as
+
+\begin{eqnarray}\nonumber
+J_{D}((s,r),\tau)&=&\frac{\partial
+\Phi_{s,r}}{dD_{\tau}}\\&=&\sum_{e\in\Omega_\tau}\left(\mathbf{H}_\tau^e{\boldsymbol\Phi}_s^e\right)^T{\boldsymbol\Phi}_r^e
+\end{eqnarray}
+where $\sum_{e\in\Omega_\tau}$ denotes the summation over all
+elements that in the immediate vicinity of the parameter node $\tau$;
+matrix $\mathbf{H}_\tau^e$ has form of
+\begin{equation}
+h^\tau_{i,j}=\left\langle
+\phi_\tau(r)\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle
+\end{equation}
+
+\section{Gauss-Newton iterative image reconstruction}
+As we derived above, the Jacobian matrix is simply the first order Fr\'echet derivative of a multi-input (parameters) and multi-output (measurements) function. The 1st order derivative also gives the gradient direction, using which, one can solve for the inverse problem more efficiently.
+
+Overall, the goal of the image reconstruction problem is to solve the below optimization problem
+\begin{equation}\label{eq:gw}
+\underset{\mu}{\arg\min} \, || \mathbf{y-\Phi(\mu)} ||^2_2
+\end{equation}
+where $\mathbf y$ is the measurements collected at all source-detector pairs, $\mathbf\Phi$ is the forward model that maps the parameters $\mu$ to the forward solution. In nearly all cases, the measurement $\mathbf y$ is not a complete sample of the forward solution, but rather a sparse subset acquired at discrete locations. To match the two terms, the second term in the above expression is often represented by $\mathbf{\Lambda\Phi(\mu)}$ where $\mathbf\Lambda$ is a sampling matrix. For simplicity, here we assume $\mathbf\Lambda$ is absorbed into the forward operator $\mathbf\Phi$. We want to note here that the model output $\mathbf\Phi(\mu)$ is a nonlinear function of the parameter $\mu$. Thus, in order to solve for $\mu$ that minimizes (\ref{eq:gw}), iterative estimation methods based on numerical gradient are often used.
+
+The Gauss-Newton method is one of the widely applied algorithm to solve for the above optimization problem. It is a well-balanced algorithm with a convergence speed between the linear convergence algorithm, such as conjugate-gradient method, and the 2nd-order convergence algorithm, such as the Raphson-Newton algorithm. Compare to the Raphson-Newton algorithm, where the 2nd-order derivative, i.e. the Hessian matrix ($H=\frac{\partial^2 \mathbf\Phi}{\partial\mu^2}$), has to be computed, the Gauss-Newton method uses an approximated Hessian matrix, i.e. the Gauss-Newton Hessian matrix, defined by $G=J^TJ$ where $J$ is the Jacobian, i.e. the 1st order derivative.
+
+
+\section{Data calibration and simultaneous source-detector coupling coefficient estimation}
+The source-detector coupling coefficients (SD) are multiplicative factors associated with each source and detector, representing the optode-dependent variations, including varied source power, detector sensitivities, fiber coupling efficiency, optical fiber light leakage, bending and fiber-tissue coupling (such as hair, pressure differences, etc.). In practices, such coupling coefficients are typically considered to be removed after applying the below calibration formula:
+\begin{equation}\label{eq:calib}
+\mathbf{\Phi}^{t}_{calib}=\frac{\hat{\mathbf{\Phi}}^{t}_{meas}}{\hat{\mathbf{\Phi}}^{p}_{meas}}\mathbf{\Phi}_{calc}^{p}
+\end{equation}
+If we assume both the target measurement $\hat{\mathbf{\Phi}}^{t}$ and the phantom measurement $\hat{\mathbf{\Phi}}^{p}$ both contain the multiplicative SD coefficients, $s_id_j$, for the $(i,j)$-th measurement pair, i.e. $\hat{\mathbf{\Phi}}^{t}=SD\times\mathbf{\Phi}^{t}$ and $\hat{\mathbf{\Phi}}^{p}=SD'\times\mathbf{\Phi}^{p}$. If we make the assumption that $SD=SD'$, applying Eq. \ref{eq:calib}, $sd$ will be removed from the measurement data.
+
+However, in realistic measurements, $SD'$ may not be the same as $SD$, as a result, the calibrated data $\mathbf{\Phi}^{t}_{calib}$ may still present uncalibrated coupling differences. The uncalibrated $SD$ coefficients are unknowns. It is possible to simultaneously fit for the optical properties using the measurement data as well as to fit for these unknown $SD$ coefficients.
+
+If we denote $\mathbf{\Phi}'=sd\times\mathbf{\Phi}$, where $sd=s\otimes d$ is the Kronecker product of the per-source-channel coupling coefficients $s_i$ and the per-detector-channel coupling coefficients $d_j$. The simultaneous $sd$ estimation aims to solve the following equation in least-square estimation
+\begin{equation}
+\left(\mathbf{J}_{\mu_a},\mathbf{J}_{D},\mathbf{J}_{sd}\right)\left(
+\begin{array}{c}
+\boldsymbol{\Delta}{\mu_a}\\
+\boldsymbol{\Delta}{D} \\
+s\\d
+\end{array}
+\right)=\boldsymbol{\Phi}^{meas}-\boldsymbol{\Phi}^{calc}
+\end{equation}
+where the $sd$ Jacobian is defined as
+\begin{equation}\label{eq:Jsd}
+\mathbf{J}_{sd}=\left[\mathbf{J}_{s}, \mathbf{J}_{d}\right]
+\end{equation}
+and
+\begin{eqnarray}\label{eq:JsJd}
+\mathbf{J}_{s} &=& \frac{\partial(\{s_id_j\times\Phi(i,j)\})}{\{s_i\}}=\{d_j\Phi(i,j)\}\\
+\mathbf{J}_{d} &=& \frac{\partial(\{s_id_j\times\Phi(i,j)\})}{\{d_j\}}=\{s_i\Phi(i,j)\}\\
+\end{eqnarray}
+In frequency-domain (FD) systems, the measurement $\mathbf\Phi$ are complex numbers, therefore, $\mathbf{J}_{sd}$ is also complex. In this case, the $s$ and $d$ coupling coefficients can also be complex numbers. This makes them different from $\Delta\mu_a$ and $\Delta_D$ which can only take real-values.
+
+\section{Log-magnitude/unwrapped phase form of Jacobian}
+The complex form update equation is
+\begin{equation}
+\left(\mathbf{J}_{\mu_a},\mathbf{J}_{D}\right)\left(
+\begin{array}{l}
+\boldsymbol{\Delta}{\mu_a}\\
+\boldsymbol{\Delta}{D}
+\end{array}
+\right)=\boldsymbol{\Phi}^{meas}-\boldsymbol{\Phi}^{calc}
+\end{equation}
+or
+\begin{equation}
+\label{eq:cpxupdate} \mathbf{J}\left(
+\begin{array}{l}
+\boldsymbol{\Delta}{\mu_a}\\
+\boldsymbol{\Delta}{D}
+\end{array}
+\right)=\boldsymbol{\Delta}\boldsymbol{\Phi}
+\end{equation}
+For FD-systems, the misfit vector $\mathbf{\Delta\Phi}$ is a complex number, so are the Jacobian matrices. In these cases the above equation can be solved in the real-form of (\ref{eq:cpxupdate}) is given by
+
+\begin{equation}\label{eq:singlewavelength}
+\left(
+\begin{array}{ll}
+\Re e{\mathbf{J}}_{\mu_a} & \Re e{\mathbf{J}}_{D}\\
+\Im m{\mathbf{J}}_{\mu_a} & \Im m{\mathbf{J}}_{D}
+\end{array}\right)
+\left(
+\begin{array}{l}
+\boldsymbol{\Delta}{\mu_a}\\
+\boldsymbol{\Delta}{D}
+\end{array}
+\right)=\left(
+\begin{array}{l}
+\Re e{\boldsymbol{\Delta\Phi}}\\
+\Im m{\boldsymbol{\Delta\Phi}}
+\end{array}\right)
+\end{equation}
+When $sd$ is used, the above equation can be further expanded as
+\begin{equation}
+\label{eq:realupdate}\left(
+\begin{array}{lllr}
+\Re e{\mathbf{J}}_{\mu_a} & \Re e{\mathbf{J}}_{D} & \Re e{\mathbf{J}}_{sd} & -\Im m{\mathbf{J}}_{sd}\\
+\Im m{\mathbf{J}}_{\mu_a} & \Im m{\mathbf{J}}_{D} & \Im m{\mathbf{J}}_{sd} & \Re e{\mathbf{J}}_{sd}
+\end{array}\right)
+\left(
+\begin{array}{l}
+\boldsymbol{\Delta}{\mu_a}\\
+\boldsymbol{\Delta}{D}\\
+\Re e({sd})\\
+\Im m({sd})
+\end{array}
+\right)=\left(
+\begin{array}{l}
+\Re e{\boldsymbol{\Delta\Phi}}\\
+\Im m{\boldsymbol{\Delta\Phi}}
+\end{array}\right)
+\end{equation}
+
+When the log-amplitude/unwrapped phase reconstruction is enabled, instead of fitting for 
+the complex-valued misfit vector $\boldsymbol{\Delta\Phi}$, one fits the concatenated log-amplitude ($\boldsymbol{\Delta\Gamma(\Phi)}=\log(|\boldsymbol{\Phi}^{meas}|)-\log(|\boldsymbol{\Phi}^{calc}|)$) and the phase ($\boldsymbol{\Delta\angle(\Phi)}$)
+vectors of the misfit. The above equation can be rewrite to
+
+\begin{equation}\label{eq:logphase}
+\left(
+\begin{array}{lll}
+\mathbf{J}_1 & \mathbf{J}_3 & \mathbf{J}_5\\
+\mathbf{J}_2 & \mathbf{J}_4 & \mathbf{J}_6
+\end{array}\right)
+\left(
+\begin{array}{l}
+\boldsymbol{\Delta}{\mu_a}\\
+\boldsymbol{\Delta}{D}\\
+\Re e({sd})\\
+\Im m({sd})
+\end{array}
+\right)=\left(
+\begin{array}{l}
+{\boldsymbol{\Delta\Gamma(\Phi)}}\\
+{\boldsymbol{\Delta\angle(\Phi)}}
+\end{array}\right)
+\end{equation}
+
+where
+\begin{eqnarray}\nonumber
+\mathbf{J}_1&=&\frac{\Re e{\boldsymbol{\Delta\Phi}}\Re e{\boldsymbol{\mathbf{J}_{\mu_a}}}
++\Im m{\boldsymbol{\Delta\Phi}}\Im m{\boldsymbol{\mathbf{J}_{\mu_a}}} }{|\boldsymbol{\Delta\Phi}|^2} \\\nonumber
+\mathbf{J}_2&=&\frac{\Re e{\boldsymbol{\Delta\Phi}}\Im m{\boldsymbol{\mathbf{J}_{\mu_a}}}
+-\Im m{\boldsymbol{\Delta\Phi}}\Re e{\boldsymbol{\mathbf{J}_{\mu_a}}} }{|\boldsymbol{\Delta\Phi}|^2} \\
+\mathbf{J}_3&=&\frac{\Re e{\boldsymbol{\Delta\Phi}}\Re e{\boldsymbol{\mathbf{J}_{D}}}
++\Im m{\boldsymbol{\Delta\Phi}}\Im m{\boldsymbol{\mathbf{J}_{D}}} }{|\boldsymbol{\Delta\Phi}|^2} \\\nonumber
+\mathbf{J}_4&=&\frac{\Re e{\boldsymbol{\Delta\Phi}}\Im m{\boldsymbol{\mathbf{J}_{D}}}
+-\Im m{\boldsymbol{\Delta\Phi}}\Re e{\boldsymbol{\mathbf{J}_{D}}} }{|\boldsymbol{\Delta\Phi}|^2} \\\nonumber
+\mathbf{J}_5&=& \frac{1}{|sd|} \\\nonumber
+\mathbf{J}_6&=& I \nonumber
+\end{eqnarray}
+where $J_5$ and $J_6$ are approximated versions of the $SD$ Jacobian in this case.
+
+\section{Multi-spectral image reconstruction}
+When data from multiple wavelengths are simultaneously used, one can reconstruct wavelength-independent chromorphore molar-concentrations $c_i$ or volume fractions $f_i$ instead of $\mu_a$ and $D$. The relationship between $\mu_a$ and $c$ is expressed as
+\begin{equation}
+\mu_a(\lambda)=\epsilon_{HbO}(\lambda)c_{HbO}+\epsilon_{HbR}(\lambda)c_{HbR}+\epsilon_{water}(\lambda)f_{water}+\epsilon_{lipids}(\lambda)f_{lipids}+ \cdots
+\end{equation}
+where $\lambda$ is the wavelength, $\epsilon_i(\lambda)$ are the extinction-coefficients of each chromorphore, and $f_{water}$ and $f_{lipids}$ are the volume fractions of water and lipids in the tissue. The extinction coefficients over wavelength can be found in the literature. 
+
+The inverse-power law is used to express the reduced scattering coefficient $\mu_s'$ in terms of wavelengths, i.e.
+\begin{equation}
+\mu_s'(\lambda)=a\times\lambda^{-b}
+\end{equation}
+where $a$ is the scattering amplitude, and $b$ is the scattering power. In some literature, a normalization is performed, making it easier for unit conversions
+\begin{equation}
+\mu_s'(\lambda)=a\times\left(\frac{\lambda}{500 \mathrm{nm}}\right)^{-b}
+\end{equation}
+in this case, $a$ has the unit of $\mu_s'$ (1/mm) and $b$ becomes unit-less.
+
+In the multi-spectral reconstructions, the following equation is solved
+\begin{equation}\label{eq:multispectral}
+\left(
+\begin{array}{llll}
+\mathbf{J}_{c}(\lambda_1) & \mathbf{J}_{a}(\lambda_1) & \mathbf{J}_b(\lambda_1) & \mathbf{J}_{sd}(\lambda_1)\\
+\mathbf{J}_{c}(\lambda_2) & \mathbf{J}_{a}(\lambda_2) & \mathbf{J}_b(\lambda_2) & \mathbf{J}_{sd}(\lambda_2)\\
+\mathbf{J}_{c}(\lambda_3) & \mathbf{J}_{a}(\lambda_3) & \mathbf{J}_b(\lambda_3) & \mathbf{J}_{sd}(\lambda_3)\\
+ & \cdots & \cdots 
+\end{array}\right)
+\left(
+\begin{array}{c}
+\boldsymbol{\Delta}{c_{HbO}}\\
+\boldsymbol{\Delta}{c_{HbR}}\\
+\boldsymbol{\Delta}{f_{water}}\\
+\boldsymbol{\Delta}{f_{lipids}}\\
+a\\
+b\\
+\Re e({sd})\\
+\Im m({sd})
+\end{array}
+\right)=\left(
+\begin{array}{c}
+\boldsymbol{\Delta\Phi(\lambda_1)}\\
+\boldsymbol{\Delta\Phi(\lambda_2)}\\
+\boldsymbol{\Delta\Phi(\lambda_3)}\\
+\cdots
+\end{array}\right)
+\end{equation}
+and $\mathbf{J}_{c}=\left[\mathbf{J}_{HbO}, \mathbf{J}_{HbR}, \mathbf{J}_{water}, \mathbf{J}_{lipids}, \cdots\right]$, with
+\begin{equation}
+\mathbf{J}_{c}^i(\lambda_j)=\epsilon_i(\lambda_j)\mathbf{J}_{\mu_a}(\lambda_j)
+\end{equation}
+$i=$\{HbO, HbR, water, lipids, ...\}; also, we have
+\begin{eqnarray}
+\mathbf{J}_a(\lambda)&=&-\frac{\lambda^{b}}{3a^2} = -\left[3D^2(\lambda)\lambda^{-b}\right]\mathbf{J}_D(\lambda)\\
+\mathbf{J}_b(\lambda)&=& \frac{3a\lambda^{-b}}{\log(\lambda)} =\left[D(\lambda)\log(\lambda)\right]\mathbf{J_D(\lambda)}
+\end{eqnarray}
+Here we assume the $sd$ coefficients are wavelength independent.
+
+\section{Solving the inverse problem}
+The perturbation equation in the 1st order, i.e. Eqs. \ref{eq:multispectral}, \ref{eq:singlewavelength} and \ref{eq:logphase} can be solved using ordinary least-square (OLS), weighted least-square (WLS) or generalized least-square (GLS) methods.
+
+The OLS solution solves the below parameter estimation problem
+\begin{equation}
+\underset{\mu}{\arg\min} \, || \mathbf{y-\Phi(\mu)} ||^2_2
+\end{equation}
+Assuming iid Gaussian noise in the measurement $\mathbf y$, the optimal solution is given by
+\begin{eqnarray}
+\mathbf{\Delta\mu}&=&(\mathbf{J^TJ}+\lambda I)^{-1}\mathbf{J}^T\mathbf{\Delta\Phi},\;\mathrm{or}\label{eq:overols}\\
+\mathbf{\Delta\mu}&=&\mathbf{J}^T(\mathbf{JJ}^T+\lambda I)^{-1}\mathbf{\Delta\Phi}\label{eq:underols}
+\end{eqnarray}
+where $\lambda$ denotes the Tikhonov regularization parameter. Both the above forms are equivalent, according to the \emph{Sherm-Morrison-Woodbury
+identity}. However, due to the matrix sizes, it is generally preferred to solve (\ref{eq:overols}) when $\mathbf{J}$ has more rows than columns (i.e. overdetermined form: number of measurements is more than that of unknowns), and solve (\ref{eq:underols}) when $\mathbf{J}$ has more columns than rows (i.e. under-determined form: number of unknowns is more than that of the measurements).
+
+If WLS is used, the measurement data are considered random variables that may have independent variances. The residual is weighted according to the inverse square-root of the covariance matrix ($\mathbf{C_y}$) of the data - so that the data presenting the highest variance will be trusted the least, and those presenting the lowest variance will contribute the most in the residual calculations. This is equivalent to solving the below optimization problem
+\begin{equation}
+\underset{\mu}{\arg\min} \, || \mathbf{C_y}^{-1/2}\left(\boldsymbol{y-\Phi(\mu)}\right) ||^2_2
+\end{equation}
+and this gives us the solution as
+\begin{eqnarray}
+\mathbf{\Delta\mu}&=&(\mathbf{J^TC_y^{-1}J}+\lambda I)^{-1}\mathbf{J^TC_y}^{-1}\mathbf{\Delta\Phi},\;\mathrm{or}\label{eq:overwls}\\
+\mathbf{\Delta\mu}&=&\mathbf{J^T}(\mathbf{JJ^T}+\lambda \mathbf{C_y})^{-1}\mathbf{\Delta\Phi}\label{eq:underwls}
+\end{eqnarray}
+
+In the case of GLS, both the measurements and the unknowns are considered random variables, and their ``assumed'' covariance matrices, i.e. $\mathbf{C_y}$ and $\mathbf{C_\mu}$ respectively, as \emph{a priori} information, should be used. This is equivalent to the below optimization problem
+\begin{equation}
+\underset{\mu}{\arg\min} \, || \mathbf{C_y}^{-1/2}\left(\boldsymbol{y-\Phi(\mu)}\right) ||^2_2 + \lambda|| \mathbf{C_\mu}^{-1/2}\boldsymbol{\mu} ||^2_2
+\end{equation}
+and the corresponding update equation can be seen as
+\begin{eqnarray}
+\mathbf{\Delta\mu}&=&(\mathbf{J^TC_y^{-1}J}+\lambda \mathbf{C}_\mu^{-1})^{-1}\mathbf{J^TC_y}^{-1}\mathbf{\Delta\Phi},\;\mathrm{or}\label{eq:overgls}\\
+\mathbf{\Delta\mu}&=&\mathbf{C_\mu J^T}(\mathbf{JC_\mu J^T}+\lambda \mathbf{C_y})^{-1}\mathbf{\Delta\Phi}\label{eq:undergls}
+\end{eqnarray}
+In reality, the covariance matrix of the measurements $\mathbf{C_y}$ can be estimated using repeated measurements, whereas the covariance matrix of the unknowns $\mathbf{C_\mu}$ need to be provided as the prior information.
+
+When the prior values (or the expectations) of the unknowns are assumed as $\boldsymbol\mu_0$, one can solve the below extended optimization problem as
+\begin{equation}\label{eq:objfunglsprior}
+\underset{\mu}{\arg\min} \, || \mathbf{C_y}^{-1/2}\left(\boldsymbol{y-\Phi(\mu)}\right) ||^2_2 + \lambda|| \mathbf{C_\mu}^{-1/2}(\boldsymbol{\mu-\mu_0}) ||^2_2
+\end{equation}
+and the corresponding solutions are
+\begin{eqnarray}
+\mathbf{\Delta\mu}&=&(\mathbf{J^TC_y^{-1}J}+\lambda \mathbf{C}_\mu^{-1})^{-1}\left[\mathbf{J^TC_y}^{-1}\mathbf{\Delta\Phi} - \boldsymbol{C_\mu^{-1}(\mu-\mu_0)}\right],\;\mathrm{or}\label{eq:overglsprior}\\\nonumber
+\mathbf{\Delta\mu}&=&\left[ I - \mathbf{C_\mu J^T}(\mathbf{JC_\mu J^T}+\lambda \mathbf{C_y})^{-1}\mathbf{J}\right] \\
+ && \times\left[\mathbf{C_\mu J^TC_y^{-1}\Delta\Phi} - \boldsymbol{(\mu - \mu_0)}\right]\label{eq:underglsprior}
+\end{eqnarray}
+
+\section{Tissue bulk optical property fitting}\label{sec:bulkfitting}
+The tissue bulk optical property refers to the set of averaged optical property across a heterogeneous domain. The estimation of the tissue bulk properties is achieved via solving the same optimization problem as shown above, except that the unknown space is compressed dramatically and contain only a single set of parameters, one parameter per unknown specie. 
+
+Using the general reconstruction equation Eq. \ref{eq:multispectral}, the bulk optical properties can be estimated by solving the below equation
+\begin{equation}\label{eq:multispectral}
+\left(
+\begin{array}{llll}
+\sum_i{J}_{c}(\lambda_1) & \sum_i{J}_{a}(\lambda_1) & \sum_i{J}_b(\lambda_1) & \sum_i{J}_{sd}(\lambda_1)\\
+\sum_i{J}_{c}(\lambda_2) & \sum_i{J}_{a}(\lambda_2) & \sum_i{J}_b(\lambda_2) & \sum_i{J}_{sd}(\lambda_2)\\
+\sum_i{J}_{c}(\lambda_3) & \sum_i{J}_{a}(\lambda_3) & \sum_i{J}_b(\lambda_3) & \sum_i{J}_{sd}(\lambda_3)\\
+ & \cdots & \cdots 
+\end{array}\right)
+\left(
+\begin{array}{c}
+\overline{\boldsymbol{\Delta}{c_{HbO}}}\\
+\overline{\boldsymbol{\Delta}{c_{HbR}}}\\
+\overline{\boldsymbol{\Delta}{f_{water}}}\\
+\overline{\boldsymbol{\Delta}{f_{lipids}}}\\
+\bar{a}\\
+\bar{b}\\
+\overline{\Re e({sd})}\\
+\overline{\Im m({sd}})
+\end{array}
+\right)=\left(
+\begin{array}{c}
+\boldsymbol{\Delta\Phi(\lambda_1)}\\
+\boldsymbol{\Delta\Phi(\lambda_2)}\\
+\boldsymbol{\Delta\Phi(\lambda_3)}\\
+\cdots
+\end{array}\right)
+\end{equation}
+where $\sum_i$ denotes the summation of all the columns (the dimension corresponds to the unknowns) of the Jacobian matrices and $\overline{\boldsymbol{\Delta}{c_i}}$ is the update to correct the $i$-th bulk optical property from the initial background value.
+
+The above optical property fitting algorithm can be generalized in the below two scenarios. In the first case, where a piece-wise constant segmentation is provided (as priors), the above equation can be modified to fit multiple sets of optical property, one for each segmentation
+\begin{equation}\label{eq:multispectral}
+\left(
+\begin{array}{llll}
+\sum_{i\in\Omega_1}{J}(\lambda_1) & \sum_{i\in\Omega_2}{J}(\lambda_1) & \cdots & \sum_{i\in\Omega_{N_s}}{J}(\lambda_1) \\
+\sum_{i\in\Omega_1}{J}(\lambda_2) & \sum_{i\in\Omega_2}{J}(\lambda_2) & \cdots & \sum_{i\in\Omega_{N_s}}{J}(\lambda_2) \\
+\sum_{i\in\Omega_1}{J}(\lambda_3) & \sum_{i\in\Omega_2}{J}(\lambda_3) & \cdots & \sum_{i\in\Omega_{N_s}}{J}(\lambda_3) \\
+ & \cdots & \cdots 
+\end{array}\right)
+\left(
+\begin{array}{c}
+\overline{\boldsymbol{\Delta}{\mu_{\Omega_1}}}\\
+\overline{\boldsymbol{\Delta}{\mu_{\Omega_2}}}\\
+\overline{\boldsymbol{\Delta}{\mu_{\Omega_3}}}\\
+\cdots
+\end{array}
+\right)=\left(
+\begin{array}{c}
+\boldsymbol{\Delta\Phi(\lambda_1)}\\
+\boldsymbol{\Delta\Phi(\lambda_2)}\\
+\boldsymbol{\Delta\Phi(\lambda_3)}\\
+\cdots
+\end{array}\right)
+\end{equation}
+where $\Delta\mu_{\Omega_i}=\left[\overline{c_{HbO,\Omega_i}},\overline{c_{HbR,\Omega_i}},\cdots\right]^T$ is the averaged optical properties for the $i$-th segment. The above segmentation-based bulk-property fitting method is sometimes referred to as the ``hard-priors''.
+
+If a probabilistic segmentation is provided to replace the binary segmentations, where every node is represented as a set of probabilities (or fraction of volumes) of being different tissue types, so that the probility map is defined as a matrix
+\begin{equation}
+P=\left\{p^k_{i}\right\}_{i=1,\cdots,N; k=1,\cdots,N_s}
+\end{equation}
+where $0\le p^k_{i} \le 1$ is the probability for the $i$-th node/voxel to be tissue type $k$, and $\sum_k{p^k_{i}}=1$ holds for any $i$. The above segmentation-based bulk-property fitting equation can be generalized to
+\begin{equation}\label{eq:multispectral}
+\left(
+\begin{array}{c}
+\mathbf{J}(\lambda_1)P\\
+\mathbf{J}(\lambda_2)P\\
+\mathbf{J}(\lambda_3)P\\
+\cdots 
+\end{array}\right)
+\left(
+\begin{array}{c}
+\overline{\boldsymbol{\Delta}{\mu_{\Omega_1}}}\\
+\overline{\boldsymbol{\Delta}{\mu_{\Omega_2}}}\\
+\overline{\boldsymbol{\Delta}{\mu_{\Omega_3}}}\\
+\cdots
+\end{array}
+\right)=\left(
+\begin{array}{c}
+\boldsymbol{\Delta\Phi(\lambda_1)}\\
+\boldsymbol{\Delta\Phi(\lambda_2)}\\
+\boldsymbol{\Delta\Phi(\lambda_3)}\\
+\cdots
+\end{array}\right)
+\end{equation}
+Once the tissue-type averaged optical property update is calculated using the above equation, the node values are then updated by $\{\Delta\mu_i\}_i=P\times\{\overline{\Delta\mu_{\Omega_k}}\}_{k=1,\cdots,N_s}$.
+
+\section{Defining priors using the $L$-matrix}\label{sec:Lmatrix}
+In many cases, Eq. \ref{eq:objfunglsprior} is solved in the below form under the context of Tikhonov regularization
+\begin{equation}
+\underset{\mu}{\arg\min} \, || \boldsymbol{y-\Phi(\mu)} ||^2_2 + \lambda|| L(\boldsymbol{\mu-\mu_0}) ||^2_2
+\end{equation}
+Comparing with Eq. \ref{eq:objfunglsprior}, it is clear that the regularization matrix ($L$) is the assumed inverse square-root of the covariance matrix of the unknowns ($\mathbf{C_\mu}^{-1/2}$), determined by the user as the \emph{a prior} information.
+
+Various non-identity $L$-matrices have been proposed. For example, it can be defined as a simple Laplacian to penalize rapid changes between neighboring nodes or voxels. For an FEM-mesh based solution, $L$ can be defined as 
+\begin{equation}
+l_{i,j}=\left\{\begin{array}{cl}
+-1 & \textrm{if $j$ and $j$ are connected and $i\ne j$}\\
+0 &\textrm{if $i$ and $j$ are not connected and $i\ne j$}\\
+N_i & \textrm{if $i=j$}\\
+\end{array}\right.
+\end{equation}
+where $N_i$ is the degree of the node, denoting the total neighbor count of node $i$.
+
+The above Laplacian operator can be also applied to segmented domains derived from prior information (such as a co-registered structural-scan of the same volume), where the nodes/elements within the same tissue regions are labeled identically, we have
+\begin{equation}
+l_{i,j}=\left\{\begin{array}{cl}
+-\frac{1}{N_k} & \textrm{if $i$ and $j$ belong to the same region $\Omega_k$}\\
+0 &\textrm{if $i$ and $j$ belong to different regions}\\
+1 & \textrm{if $i=j$}\\
+\end{array}\right.
+\end{equation}
+where $N_k$ is the total node/voxels within the $k$-th region $\Omega_k$. The above method is sometimes referred to as the ``soft-priors''.
+
+Another reported $L$-matrix example is the so-called ``Helmholtz operator''. 
+\begin{equation}
+l_{i,j}=\left\{\begin{array}{cl}
+-\frac{1}{N_k +(h/h_f)^2}& \textrm{if $i$ and $j$ belong to the same region $\Omega_k$}\\
+0 &\textrm{if $i$ and $j$ belong to different regions}\\
+1 & \textrm{if $i=j$}\\
+\end{array}\right.
+\end{equation}
+where $h$ is the average distance between nodes, and $h_f$ is the desired average image feature size.
+
+\section{Compositional-prior guided reconstructions}
+
+The ``compositional prior'' guided reconstruction algorithm was proposed in 2010. In this algorithm, the $L$ matrix is also derived from a co-registered structure-image but with the added ability to fully utilize the detailed gray-scale image features. Different from all above mentioned prior-guided reconstruction algorithms, where the spatial nodes are initially segmented as piece-wise constant regions, the compositional prior utilizes probabilistic segmentations of the tissue, as described in Section \ref{sec:bulkfitting}. 
+
+In short, the compositional prior approach penalizes reconstruct recovered property differences in the compositional space. It
+computes the similarities in tissue compositions between spatial locations, derived from the intensity maps from \emph{a priori} structural images, and build a weighted graph connecting all nodes in the compositional space ($N_s$ dimensional space with $p^k$ as the coordinates), then create the $L$-matrix as the Laplacian of the weighted graph in the compositional space.
+
+Specifically, the $L$-matrix encodes the compositional prior is constructed as
+\begin{equation}
+l_{i,j}=\left\{\begin{array}{cl}
+-\frac{u_{i,j}}{\beta\sqrt{d_id_j}}& \textrm{if $||C_i-C_j||_2<\alpha N_s$, i.e. connected}\\
+0 &\textrm{if $||C_i-C_j||_2\ge\alpha N_s$, i.e. not connected}\\
+1 & \textrm{if $i=j$}\\
+\end{array}\right.
+\end{equation}
+where $||\cdot||_2$ is the $L_2$-norm, $N_s$ is the total number of tissue types, $C_i=\{p^1_i,p^2_i,\cdots,p^{N_s}_i\}$ is the compositional vector at $i$-th node, and $\alpha\in[0, 1]$ is a user-defined parameter to control the sparsity of the $L$-matrix - the lower the $\alpha$ value, the sparser the $L$-matrix; $\beta>1$ is another user-specified parameter to control the diagonal dominance of the $L$-matrix - the larger the $\beta$, the less penalization between nodes. The typical values for $\alpha$ is between 0.1 and 0.2, and that for $\beta$ is 1.2. 
+
+Parameter $u_{i,j}$ is the weight between nodes $i$ and $j$, defined as the average per-component Euclidean distance in the compositional space between the two nodes, as $u_{i,j}=\alpha-||C_i-C_j||_2/N_s\ge 0$, and $d_i$ and $d_j$ are the ``degrees'' of the two nodes in a weighted graph, defined as $d_i=\sum_{k,||C_i-C_k||_2<\alpha N_s}{u_{i,k}}$.
+
+As one can see, the above definition of $L$-matrix does not require piece-wise constant segmentations, and avoids the loses of the gray-scale features from the structural images. The probabilistic segmentation is also better suited for medical imaging because a small region in the biological tissue typically contains a mixture of various types of tissues. The tissue probability can be treated as the volume fractions of different tissue types inside the smallest spatial discretization unit, such as a voxel or a tetrahedron.
+
+It is apparent that there are many ways to segment the \emph{a priori} structural image intensity maps to the probability maps in the compositional space. We call this step as the ``fuzzy segmentation''. The above proposed algorithm is quite general and can accommodate many fuzzy segmentation methods. A simple linear mapping was proposed in the original paper, and various alternative mapping methods, including those based on the Gaussian-mixture models and threshold-based algorithms were studied in Deng 2015. From the latter paper, we concluded that the the reconstructed images are not sensitive to the fuzzy segmentation algorithm; however, all of these methods showed significantly around $2\times$ errors in the reconstructed images.
+
+As we show in Section \ref{sec:Lmatrix}, the $L$-matrix is equivalent to the $\mathbf{C_\mu}^{-1/2}$ term in GLS, and $\mathbf{C_\mu}=(L^TL)^{-1}$ . Replacing $\mathbf{C_\mu}$ to (\ref{eq:undergls}), we have
+\begin{eqnarray}
+\mathbf{\Delta\mu}&=& (\mathbf{J^TJ}+\lambda \mathbf{L^TL})^{-1}J^T\mathbf{\Delta\Phi},\,\textrm{ or}\\
+\mathbf{\Delta\mu}&=&\mathbf{(L^TL)^{-1} J^T}\left[\mathbf{J(L^TL)^{-1}J^T}+\lambda I\right]^{-1}\mathbf{\Delta\Phi}
+\end{eqnarray}
+
+When multiple properties are defined on every node, the compositional-prior derived $L$-matrix is shared between multiple blocks of the parameters. Given the block structure as shown in (\ref{eq:multispectral}), we have the following equation for the over-determined form
+\begin{equation}
+\mathbf{\Delta\mu}=
+\left[\left(\begin{array}{l}
+\mathbf{J}_1\\
+\mathbf{J}_2\\
+\mathbf{J}_3\\
+\cdots 
+\end{array}\right)
+[\mathbf{J_1, J_2},\cdots]+\lambda
+\left(\begin{array}{l}
+\mathbf{C_\mu}\mathbf{J}_1\\
+\mathbf{C_\mu}\mathbf{J}_2\\
+\mathbf{C_\mu}\mathbf{J}_3\\
+\cdots 
+\end{array}\right)\right]^{-1}\mathbf{\Delta\Phi}
+\end{equation}
+Similarly, for the under-determined form, we have
+\begin{eqnarray}\label{eq:underLTL}
+\mathbf{\Delta\mu}&=&
+\left(\begin{array}{l}
+\mathbf{C_\mu}\mathbf{J}_1\\
+\mathbf{C_\mu}\mathbf{J}_2\\
+\mathbf{C_\mu}\mathbf{J}_3\\
+\cdots 
+\end{array}\right)\\
+&\times& \left[
+\left(\begin{array}{cccc}
+\mathbf{J}_1\mathbf{C_\mu}\mathbf{J}^T_1 & 0 & 0 & \cdots\\
+0& \mathbf{J}_2\mathbf{C_\mu}\mathbf{J}^T_2 & 0 & \cdots\\
+0 & 0 & \mathbf{J}_3\mathbf{C_\mu}\mathbf{J}^T_3 & \cdots\\
+& \cdots& 
+\end{array}\right)
++\lambda I\right]^{-1}\mathbf{\Delta\Phi}
+\end{eqnarray}
+where the Jacobian blocks $\mathbf{J}_k$ are the Jacobians corresponding to each optical property (chromorphore concentrations, absorption, scattering etc) defined on the nodes.
+
+In Deng 2015, we propose a fast algorithm to compute the above under-determined form by first computing the QR decomposition of $L$ as $L=QR$, and then compute $R^{-1}$ and construct an intermediate matrix $Z_i=\mathbf{J}_iR^{-1}$. Therefore, we have $\mathbf{C_\mu}\mathbf{J}_i=R^{-1}Z^T$ and $\mathbf{J}_i\mathbf{C_\mu}\mathbf{J}^T_i=Z_iZ^T$. 
+Replacing these two terms into (\ref{eq:underLTL}), we can solve for the under-determined solution more efficiently.
+
+
+\end{document}
