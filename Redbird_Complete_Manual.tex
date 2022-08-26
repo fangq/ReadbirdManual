@@ -1,7 +1,34 @@
-\documentclass{article}
+\documentclass[12pt]{book}               % I'm using a double-sided book style
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amsbsy}
+\usepackage[sectionbib]{natbib}          % Cross-reference package (Natural BiB)
+\usepackage{fancyhdr}                    % Fancy Header and Footer
+\usepackage{setspace}                    % Line spacing
+\usepackage{txfonts}                     % Public Times New Roman text & math font
+%%% Fancy Header %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Fancy Header Style Options
+\pagestyle{fancy}                       % Sets fancy header and footer
+\fancyfoot{}                            % Delete current footer settings
+\renewcommand{\chaptermark}[1]{         % Lower Case Chapter marker style
+    \markboth{\chaptername\ \thechapter.\ #1}{}} %
+\renewcommand{\sectionmark}[1]{         % Lower case Section marker style
+    \markright{\thesection.\ #1}}         %
+\fancyhead[LE,RO]{\bfseries\thepage}    % Page number (boldface) in left on even
+                                        % pages and right on odd pages
+\fancyhead[RE]{\bfseries\leftmark}      % Chapter in the right on even pages
+\fancyhead[LO]{\bfseries\rightmark}     % Section in the left on odd pages
+\renewcommand{\headrulewidth}{0.3pt}    % Width of head rule
+%%% Clear Header %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Clear Header Style on the Last Empty Odd pages
+\makeatletter
+\def\cleardoublepage{\clearpage\if@twoside \ifodd\c@page\else%
+    \hbox{}%
+    \thispagestyle{empty}%              % Empty header styles
+    \newpage%
+    \if@twocolumn\hbox{}\newpage\fi\fi\fi}
+\makeatother
+
 \title{Redbird \-- a 3D finite element based non-linear image reconstruction algorithm \-- theory and implementation}
 
 \author{Qianqian Fang}
@@ -11,6 +38,8 @@
 
 \begin{document}
 \maketitle              % you need to define \title{..}
+
+\chapter{Introduction}
 
 Redbird-m is a MATLAB toolbox designed for solving the forward and inverse
 problems for diffuse optical tomography (DOT), with the additional support of 
@@ -26,6 +55,8 @@ source-detector (SD) coupling coefficient estimation process was
 implemented in conjunction with the optical parameter reconstruction. 
 This document summarizes the mathematical treatment for the forward 
 and inverse problems used in this algorithm.
+
+\chapter{Mathematical models}
 
 \section{Mathematical derivations for the forward model}
 The diffusion equation in the time-domain can be expressed as
@@ -772,7 +803,7 @@ Similarly, for the under-determined form, we have
 \mathbf{C_\mu}\mathbf{J}_2\\
 \mathbf{C_\mu}\mathbf{J}_3\\
 \cdots 
-\end{array}\right)\\
+\end{array}\right)\\\nonumber
 &\times& \left[
 \left(\begin{array}{cccc}
 \mathbf{J}_1\mathbf{C_\mu}\mathbf{J}^T_1 & 0 & 0 & \cdots\\
@@ -787,5 +818,28 @@ where the Jacobian blocks $\mathbf{J}_k$ are the Jacobians corresponding to each
 In Deng 2015, we propose a fast algorithm to compute the above under-determined form by first computing the QR decomposition of $L$ as $L=QR$, and then compute $R^{-1}$ and construct an intermediate matrix $Z_i=\mathbf{J}_iR^{-1}$. Therefore, we have $\mathbf{C_\mu}\mathbf{J}_i=R^{-1}Z^T$ and $\mathbf{J}_i\mathbf{C_\mu}\mathbf{J}^T_i=Z_iZ^T$. 
 Replacing these two terms into (\ref{eq:underLTL}), we can solve for the under-determined solution more efficiently.
 
+\section{Additional techniques}
+
+\subsection{Dual-mesh method for solving decoupled forward and inverse problems}
+
+\subsection{Multiple right-hand-side linear solvers for accelerating matrix solutions}
+
+\subsection{Simultaneous use of continuous-wave and frequency-domain data}
+
+\subsection{Matrix scaling and variance equalization}
+
+\subsection{Emperical Tikhonov regularization method}
+
+\subsection{Two-dimensional prior guided 3D reconstructions}
+
+\subsection{Other supported linear and least-square solvers}
+
+\bibliographystyle{plain}
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{rbmanual}
+
+\chapter{Software implementations}
+
+\chapter{Example implementations}
 
 \end{document}
