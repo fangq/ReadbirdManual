@@ -6,6 +6,7 @@
 \usepackage{fancyhdr}                    % Fancy Header and Footer
 \usepackage{setspace}                    % Line spacing
 \usepackage{txfonts}                     % Public Times New Roman text & math font
+\usepackage{graphicx}
 \usepackage{hyperref}
 
 \hypersetup{
@@ -38,8 +39,9 @@
     \newpage%
     \if@twocolumn\hbox{}\newpage\fi\fi\fi}
 \makeatother
+\title{\includegraphics[width=\textwidth]{images/redbird_banner.png}
+-- a comprehensive model-based image reconstruction platform for diffuse optical tomography and microwave tomography}
 
-\title{Redbird -- a comprehensive model-based image reconstruction platform for diffuse optical tomography and microwave tomography}
 
 \author{Qianqian Fang}
 
@@ -47,14 +49,17 @@
 
 
 \begin{document}
+
 \maketitle              % you need to define \title{..}
+
+\tableofcontents
 
 \chapter{History}
 
 Redbird is an open-source MATLAB/GNU Octave toolbox designed for solving the forward and inverse
 problems for diffuse optical tomography (DOT), with the additional support of 
 several other non-linear model-based imaging modalities. Redbird was ported from 
-Redbird90~\cite{Fang2008} -- a FORTRAN90 based DOT image reconstruction software written by the same author, Dr. Qianqian Fang, between 2005 and 2008. The FORTRAN90-based Redbird90 was derived from an earlier implementation, code-named ``WhiteDragon''~\cite{Fang2004, Fang2009IEEE}, also developed by Dr. Fang, between 2001 and 2005 as part of his PhD dissertation~\cite{Fang2004thesis}, designed to perform iterative 3-D microwave tomography (MWT) image reconstructions~\cite{FangThesis}. The majority of the functionalities in WhiteDragon, including the 3-D finite element method (FEM) for forward modeling~\cite{Fang2004}, Gauss-Newton based nonlinear inverse solver~\cite{Fang2009IEEE}, a multi-right-hand-side quasi-minimal residual (BL-QMR)~\cite{Boyse1996} sparse linear solver, the adjoint method~\cite{Fang2004} for building Jacobians, and a dual-mesh reconstruction approach~\cite{Paulsen1995}, had been inherited to Redbird90, and subsequently ported to Redbird. To extend the modality from MWT to DOT, Redbird further introduced multi-spectral DOT reconstruction, derived from the multi-spectral MWT reconstruction algorithm developed in Dr. Fang's thesis~\cite{FangThesis}, a compositional-prior-guided DOT reconstruction~\cite{Fang2010,Deng2015a}, as well as a simultaneous source-detector (SD) coupling coefficient estimation~\cite{Boas2001,Schweiger2007}. 
+Redbird90~\cite{Fang2008} -- a FORTRAN90 based DOT image reconstruction software written by the same author, Dr. Qianqian Fang, between 2005 and 2008. The FORTRAN90-based Redbird90 was derived from an earlier implementation, code-named ``WhiteDragon''~\cite{Fang2004, Fang2010c}, also developed by Dr. Fang, between 2001 and 2005 as part of his Ph.D. dissertation~\cite{FangThesis}, designed to perform iterative 3-D microwave tomography (MWT) image reconstructions. The majority of the functionalities in WhiteDragon, including the 3-D finite element method (FEM) for forward modeling~\cite{Fang2004}, Gauss-Newton based nonlinear inverse solver~\cite{Fang2009IEEE}, a multi-right-hand-side quasi-minimal residual (BL-QMR)~\cite{Boyse1996} sparse linear solver, the adjoint method~\cite{Fang2004} for building Jacobians, and a dual-mesh reconstruction approach~\cite{Paulsen1995}, had been inherited to Redbird90, and subsequently ported to Redbird. To extend the modality from MWT to DOT, Redbird further introduced multi-spectral DOT reconstruction, derived from the multi-spectral MWT reconstruction algorithm developed in Dr. Fang's thesis~\cite{FangThesis}, a compositional-prior-guided DOT reconstruction~\cite{Fang2010,Deng2015a}, as well as a simultaneous source-detector (SD) coupling coefficient estimation~\cite{Boas2001,Schweiger2007}. 
 
 Both names ``Redbird'' and ``WhiteDragon'' were rooted in ancient Chinese astrology. In ancient China, astrologists partitioned the sky into 4 quadrants -- each named after an animal deity that the constellations resemble: East -- pale/white dragon, West -- white tiger, North -- black turtle, and South -- red bird. The name ``Redbird'' was selected because DOT uses red and near-infrared light for imaging.
 
@@ -207,23 +212,15 @@ Equation (\ref{eq:weakformpartial}) is the final formula used in
 the reconstruction code.
 
 \section{Widefield illumination}
-When a light source is located outside of the domain, i.e. a wide-field source, at the boundary, the 
-in-bound flux, $J^-$ is no longer zero, thus, the boundary condition should be modified as
-\begin{equation}
-\label{eq:widefieldsrc} \left(\boldsymbol\Phi-l_s\nabla{\boldsymbol\Phi}\right)|_{\partial\Omega}=J^-
-\end{equation}
-Thus, we should replace $\nabla{\boldsymbol\Phi}$ by $(\boldsymbol\Phi - J^-)/l_s$ in (\ref{eq:weakform}), and we get
-\begin{eqnarray}\nonumber
-\label{eq:weakformwidefield}\nonumber&&\sum_{i}\Phi_i\left(\sum_{k}D_k\left\langle
-\phi_k(r)\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle -
-\sum_{k}\frac{1-R_{eff}}{2(1+R_{eff})}\left\langle
-\phi_k(r)\varphi_j(r)\right\rangle_{\partial\Omega}\right.
-\\&&\left.+\sum_{k}\left(\mu_{a}^k+\frac{j\omega}{c}\right)\left\langle\phi_k(r)\varphi_i(r)\varphi_j(r)\right\rangle\right)=\\\nonumber
-&& \left\langle S_0(r)\varphi_j(r)\right\rangle + \sum_k\frac{J^-_kD_k}{l_s}\langle\phi_k(r)\varphi_j(r)\rangle|_{\partial\Omega}
-\end{eqnarray}
+Unlike MC methods, DE is not capable of modeling propagation of collimated beams inside non-scattering medium such as air and water. This can be a challenge when simulating a light source that is located outside of the domain, i.e. a wide-field source.
+
+In Redbird, a widefield source is converted to spatially distributed isotropic sources along the external surface at which the source is projecting. For example, when a disk source is casted on the top surface of a cubic diffusive domain projecting downward, a virtual source plane is created $1/\mu_s'$ below the actual domain boundary. Along this virtual source plane, all tetrahedral edges that intersect with this plane are identified. The source illumination aperture - i.e. the area where photons are launched, is subsequently sunken along this virtual source plane, and intersects all tetrahedral elements to break into smaller illumination areas bounded by each intersecting tetrahedron. The areas of these intersection profiles either in the form of a triangle or a quadrilateral, are computed, with the summation amount to the original total illumination area (which is normalized to 1).
+
+We further accumulate the normalized area of each intersecting polygon over all mesh vertices that are located on the two ends of the intersecting edges, with a weight inversely proportional to the edge-segment lengths between the node and the edge-intersection. After this operation, the total illumination intensity of 1 is distributed along all nodes immediately located above or below the virtual source plane, where the edges between the nodes intersect with the virtual source plane.
+
 
 \section{Nodal and element-based adjoint method for computing the Jacobian matrix}
-Equation (\ref{eq:weakformpartial}) for each element written in the
+Equation (\ref{eq:weakformpartial}) for each element written in
 matrix form is
 \begin{equation}
 \label{eq:matrix} \mathbf{A}{\boldsymbol\Phi}=\mathbf{b}
@@ -238,10 +235,10 @@ for node-based FEM matrix, and
 a_{i,j}=\sum_{i,j\in e}\left(D_e\left\langle
 \nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle+\left(\mu_{a}^{e}+\frac{j\omega}{c}\right)\left\langle\varphi_i(r)\varphi_j(r)\right\rangle\right)
 \end{equation}
-for element-based FEM matrix, where $D_e$ and $\mu_a^{e}$ are the diffusion and absorption coefficients 
+for the element-based FEM matrix, where $D_e$ and $\mu_a^{e}$ are the diffusion and absorption coefficients 
 of the $e$-th element.
 
-Taking derivative of $\mu_a$ and $D$ on both sides of
+Taking the derivative of $\mu_a$ and $D$ on both sides of
 (\ref{eq:matrix}), we get
 \begin{eqnarray}
 \frac{\partial \mathbf{A}}{\partial
@@ -393,19 +390,19 @@ Overall, the goal of the image reconstruction problem is to solve the below opti
 \begin{equation}\label{eq:gw}
 \underset{\mu}{\arg\min} \, || \mathbf{y-\Phi(\mu)} ||^2_2
 \end{equation}
-where $\mathbf y$ is the measurements collected at all source-detector pairs, $\mathbf\Phi$ is the forward model that maps the parameters $\mu$ to the forward solution. In nearly all cases, the measurement $\mathbf y$ is not a complete sample of the forward solution, but rather a sparse subset acquired at discrete locations. To match the two terms, the second term in the above expression is often represented by $\mathbf{\Lambda\Phi(\mu)}$ where $\mathbf\Lambda$ is a sampling matrix. For simplicity, here we assume $\mathbf\Lambda$ is absorbed into the forward operator $\mathbf\Phi$. We want to note here that the model output $\mathbf\Phi(\mu)$ is a nonlinear function of the parameter $\mu$. Thus, in order to solve for $\mu$ that minimizes (\ref{eq:gw}), iterative estimation methods based on numerical gradient are often used.
+where $\mathbf y$ denote the measurements collected from all source-detector pairs, $\mathbf\Phi$ is the forward model that maps the parameters $\mu$ to the forward solution. In nearly all cases, the measurement $\mathbf y$ is not a complete sample of the forward solution, but rather a sparse subset acquired at discrete locations. To match the two terms, the second term in the above expression is often represented by $\mathbf{\Lambda\Phi(\mu)}$ where $\mathbf\Lambda$ is a sampling matrix. For simplicity, here we assume that $\mathbf\Lambda$ is absorbed in the forward operator $\mathbf\Phi$. We note here that the model output $\mathbf\Phi(\mu)$ is a nonlinear function of the parameter $\mu$. Thus, in order to solve for $\mu$ that minimizes (\ref{eq:gw}), iterative estimation methods based on numerical gradient are often used.
 
-The Gauss-Newton method is one of the widely applied algorithm to solve for the above optimization problem. It is a well-balanced algorithm with a convergence speed between the linear convergence algorithm, such as conjugate-gradient method, and the 2nd-order convergence algorithm, such as the Raphson-Newton algorithm. Compare to the Raphson-Newton algorithm, where the 2nd-order derivative, i.e. the Hessian matrix ($H=\frac{\partial^2 \mathbf\Phi}{\partial\mu^2}$), has to be computed, the Gauss-Newton method uses an approximated Hessian matrix, i.e. the Gauss-Newton Hessian matrix, defined by $G=J^TJ$ where $J$ is the Jacobian, i.e. the 1st order derivative.
+The Gauss-Newton method is one of the widely applied algorithms to solve the above optimization problem. It is a well-balanced algorithm with a convergence speed between the linear convergence algorithm, such as conjugate-gradient method, and the 2nd-order convergence algorithm, such as the Raphson-Newton algorithm. Compared to the Raphson-Newton algorithm, where the 2nd-order derivative, i.e. the Hessian matrix ($H=\frac{\partial^2 \mathbf\Phi}{\partial\mu^2}$), has to be computed, the Gauss-Newton method uses an approximated Hessian matrix, i.e. the Gauss-Newton Hessian matrix, defined by $G=J^TJ$ where $J$ is the Jacobian, i.e. the first order derivative.
 
 
 \section{Data calibration and simultaneous source-detector coupling coefficient estimation}
-The source-detector coupling coefficients (SD) are multiplicative factors associated with each source and detector, representing the optode-dependent variations, including varied source power, detector sensitivities, fiber coupling efficiency, optical fiber light leakage, bending and fiber-tissue coupling (such as hair, pressure differences, etc.). In practices, such coupling coefficients are typically considered to be removed after applying the below calibration formula:
+The source-detector coupling coefficients (SD) are multiplicative factors associated with each source and detector, representing the optode-dependent variations, including varied source power, detector sensitivities, fiber coupling efficiency, optical fiber light leakage, bending, and fiber-tissue coupling (such as hair, pressure differences, etc.). In practice, such coupling coefficients are typically considered to be removed after applying the below calibration formula:
 \begin{equation}\label{eq:calib}
 \mathbf{\Phi}^{t}_{calib}=\frac{\hat{\mathbf{\Phi}}^{t}_{meas}}{\hat{\mathbf{\Phi}}^{p}_{meas}}\mathbf{\Phi}_{calc}^{p}
 \end{equation}
 If we assume both the target measurement $\hat{\mathbf{\Phi}}^{t}$ and the phantom measurement $\hat{\mathbf{\Phi}}^{p}$ both contain the multiplicative SD coefficients, $s_id_j$, for the $(i,j)$-th measurement pair, i.e. $\hat{\mathbf{\Phi}}^{t}=SD\times\mathbf{\Phi}^{t}$ and $\hat{\mathbf{\Phi}}^{p}=SD'\times\mathbf{\Phi}^{p}$. If we make the assumption that $SD=SD'$, applying Eq. \ref{eq:calib}, $sd$ will be removed from the measurement data.
 
-However, in realistic measurements, $SD'$ may not be the same as $SD$, as a result, the calibrated data $\mathbf{\Phi}^{t}_{calib}$ may still present uncalibrated coupling differences. The uncalibrated $SD$ coefficients are unknowns. It is possible to simultaneously fit for the optical properties using the measurement data as well as to fit for these unknown $SD$ coefficients.
+However, in realistic measurements, $SD'$ may not be the same as $SD$, as a result, the calibrated data $\mathbf{\Phi}^{t}_{calib}$ may still present uncalibrated coupling differences. The uncalibrated $SD$ coefficients are unknown. It is possible to simultaneously fit for the optical properties using the measurement data as well as to fit for these unknown $SD$ coefficients.
 
 If we denote $\mathbf{\Phi}'=sd\times\mathbf{\Phi}$, where $sd=s\otimes d$ is the Kronecker product of the per-source-channel coupling coefficients $s_i$ and the per-detector-channel coupling coefficients $d_j$. The simultaneous $sd$ estimation aims to solve the following equation in least-square estimation
 \begin{equation}
@@ -487,7 +484,7 @@ When $sd$ is used, the above equation can be further expanded as
 \end{array}\right)
 \end{equation}
 
-When the log-amplitude/unwrapped phase reconstruction is enabled, instead of fitting for 
+When the log-amplitude/unwrapped phase reconstruction~\cite{FangThesis, Fang2006a, Meaney2007b} is enabled, instead of fitting for 
 the complex-valued misfit vector $\boldsymbol{\Delta\Phi}$, one fits the concatenated log-amplitude ($\boldsymbol{\Delta\Gamma(\Phi)}=\log(|\boldsymbol{\Phi}^{meas}|)-\log(|\boldsymbol{\Phi}^{calc}|)$) and the phase ($\boldsymbol{\Delta\angle(\Phi)}$)
 vectors of the misfit. The above equation can be rewrite to
 
@@ -524,22 +521,24 @@ where
 \mathbf{J}_5&=& \frac{1}{|sd|} \\\nonumber
 \mathbf{J}_6&=& I \nonumber
 \end{eqnarray}
-where $J_5$ and $J_6$ are approximated versions of the $SD$ Jacobian in this case.
+where $J_5$ and $J_6$ are approximate versions of the $SD$ Jacobian in this case.
 
 \section{Multi-spectral image reconstruction}
-When data from multiple wavelengths are simultaneously used, one can reconstruct wavelength-independent chromorphore molar-concentrations $c_i$ or volume fractions $f_i$ instead of $\mu_a$ and $D$. The relationship between $\mu_a$ and $c$ is expressed as
+The multi-spectral image reconstruction algorithm was initially developed by Dr. Fang in the context of microwave tomography~\cite{Fang2004a, FangThesis}. Dr. Fang's multi-spectral algorithm had inspired Shuba Srinivasan, a PhD student at the time working under the supervision of Dr. Brian Pogue in the same Department. A year later, Srinivasan \emph{et al.} ported this algorithm to NIR imaging and achieved simultaneous chromophore reconstruction using multiple wavelengths~\cite{Srinivasan2025} (unfortunately, the failed cite the original multi-spectral algorithm paper~\cite{Fang2004a}).
+
+When data from multiple wavelengths are used simultaneously, one can reconstruct wavelength-independent chromorphore molar-concentrations $c_i$ or volume fractions $f_i$ instead of $\mu_a$ and $D$. The relationship between $\mu_a$ and $c$ is expressed as
 \begin{equation}
 \mu_a(\lambda)=\epsilon_{HbO}(\lambda)c_{HbO}+\epsilon_{HbR}(\lambda)c_{HbR}+\epsilon_{water}(\lambda)f_{water}+\epsilon_{lipids}(\lambda)f_{lipids}+ \cdots
 \end{equation}
-where $\lambda$ is the wavelength, $\epsilon_i(\lambda)$ are the extinction-coefficients of each chromorphore, and $f_{water}$ and $f_{lipids}$ are the volume fractions of water and lipids in the tissue. The extinction coefficients over wavelength can be found in the literature. 
+where $\lambda$ is the wavelength, $\epsilon_i(\lambda)$ are the extinction coefficients of each chromorphore, and $f_{water}$ and $f_{lipids}$ are the volume fractions of water and lipids in the tissue. The extinction coefficients over the wavelength can be found in the literature. 
 
 The inverse-power law is used to express the reduced scattering coefficient $\mu_s'$ in terms of wavelengths, i.e.
 \begin{equation}
 \mu_s'(\lambda)=a\times\lambda^{-b}
 \end{equation}
-where $a$ is the scattering amplitude, and $b$ is the scattering power. In some literature, a normalization is performed, making it easier for unit conversions
+where $a$ is the scattering amplitude and $b$ is the scattering power. In some literature, a normalization is performed, making it easier for unit conversions
 \begin{equation}
-\mu_s'(\lambda)=a\times\left(\frac{\lambda}{500 \mathrm{nm}}\right)^{-b}
+\mu_s'(\lambda)=a\times\left(\frac{\lambda}{500 \mathrm{nm}}\right)^{-b}.
 \end{equation}
 in this case, $a$ has the unit of $\mu_s'$ (1/mm) and $b$ becomes unit-less.
 
@@ -580,10 +579,10 @@ $i=$\{HbO, HbR, water, lipids, ...\}; also, we have
 \mathbf{J}_a(\lambda)&=&-\frac{\lambda^{b}}{3a^2} = -\left[3D^2(\lambda)\lambda^{-b}\right]\mathbf{J}_D(\lambda)\\
 \mathbf{J}_b(\lambda)&=& \frac{3a\lambda^{-b}}{\log(\lambda)} =\left[D(\lambda)\log(\lambda)\right]\mathbf{J_D(\lambda)}
 \end{eqnarray}
-Here we assume the $sd$ coefficients are wavelength independent.
+Here we assume that the $sd$ coefficients are wavelength-independent.
 
 \section{Solving the inverse problem}
-The perturbation equation in the 1st order, i.e. Eqs. \ref{eq:multispectral}, \ref{eq:singlewavelength} and \ref{eq:logphase} can be solved using ordinary least-square (OLS), weighted least-square (WLS) or generalized least-square (GLS) methods.
+The perturbation equation in the 1st order, i.e. Eqs. \ref{eq:multispectral}, \ref{eq:singlewavelength} and \ref{eq:logphase} can be solved using ordinary least-square (OLS), weighted least-square (WLS) or generalized least-square (GLS) methods~\cite{FangThesis}.
 
 The OLS solution solves the below parameter estimation problem
 \begin{equation}
@@ -594,10 +593,10 @@ Assuming iid Gaussian noise in the measurement $\mathbf y$, the optimal solution
 \mathbf{\Delta\mu}&=&(\mathbf{J^TJ}+\lambda I)^{-1}\mathbf{J}^T\mathbf{\Delta\Phi},\;\mathrm{or}\label{eq:overols}\\
 \mathbf{\Delta\mu}&=&\mathbf{J}^T(\mathbf{JJ}^T+\lambda I)^{-1}\mathbf{\Delta\Phi}\label{eq:underols}
 \end{eqnarray}
-where $\lambda$ denotes the Tikhonov regularization parameter. Both the above forms are equivalent, according to the \emph{Sherm-Morrison-Woodbury
-identity}. However, due to the matrix sizes, it is generally preferred to solve (\ref{eq:overols}) when $\mathbf{J}$ has more rows than columns (i.e. overdetermined form: number of measurements is more than that of unknowns), and solve (\ref{eq:underols}) when $\mathbf{J}$ has more columns than rows (i.e. under-determined form: number of unknowns is more than that of the measurements).
+where $\lambda$ denotes the Tikhonov regularization parameter. Both of the above forms are equivalent, according to \emph{Sherm-Morrison-Woodbury
+identity}. However, due to the matrix sizes, it is generally preferred to solve (\ref{eq:overols}) when $\mathbf{J}$ has more rows than columns (i.e. overdetermined form: number of measurements is more than that of unknowns) and solve (\ref{eq:underols}) when $\mathbf{J}$ has more columns than rows (i.e. under-determined form: number of unknowns is more than that of the measurements).
 
-If WLS is used, the measurement data are considered random variables that may have independent variances. The residual is weighted according to the inverse square-root of the covariance matrix ($\mathbf{C_y}$) of the data - so that the data presenting the highest variance will be trusted the least, and those presenting the lowest variance will contribute the most in the residual calculations. This is equivalent to solving the below optimization problem
+If WLS is used, the measurement data are considered random variables that may have independent variances. The residual is weighted according to the inverse square-root of the covariance matrix ($\mathbf{C_y}$) of the data, so that the data presenting the highest variance will be trusted the least, and those presenting the lowest variance will contribute the most in the residual calculations. This is equivalent to solving the below optimization problem
 \begin{equation}
 \underset{\mu}{\arg\min} \, || \mathbf{C_y}^{-1/2}\left(\boldsymbol{y-\Phi(\mu)}\right) ||^2_2
 \end{equation}
@@ -616,7 +615,7 @@ and the corresponding update equation can be seen as
 \mathbf{\Delta\mu}&=&(\mathbf{J^TC_y^{-1}J}+\lambda \mathbf{C}_\mu^{-1})^{-1}\mathbf{J^TC_y}^{-1}\mathbf{\Delta\Phi},\;\mathrm{or}\label{eq:overgls}\\
 \mathbf{\Delta\mu}&=&\mathbf{C_\mu J^T}(\mathbf{JC_\mu J^T}+\lambda \mathbf{C_y})^{-1}\mathbf{\Delta\Phi}\label{eq:undergls}
 \end{eqnarray}
-In reality, the covariance matrix of the measurements $\mathbf{C_y}$ can be estimated using repeated measurements, whereas the covariance matrix of the unknowns $\mathbf{C_\mu}$ need to be provided as the prior information.
+In reality, the covariance matrix of the measurements $\mathbf{C_y}$ can be estimated using repeated measurements, whereas the covariance matrix of the unknowns $\mathbf{C_\mu}$ need to be provided as prior information.
 
 When the prior values (or the expectations) of the unknowns are assumed as $\boldsymbol\mu_0$, one can solve the below extended optimization problem as
 \begin{equation}\label{eq:objfunglsprior}
@@ -630,7 +629,7 @@ and the corresponding solutions are
 \end{eqnarray}
 
 \section{Tissue bulk optical property fitting}\label{sec:bulkfitting}
-The tissue bulk optical property refers to the set of averaged optical property across a heterogeneous domain. The estimation of the tissue bulk properties is achieved via solving the same optimization problem as shown above, except that the unknown space is compressed dramatically and contain only a single set of parameters, one parameter per unknown specie. 
+The tissue bulk optical property refers to the set of averaged optical property across a heterogeneous domain. The estimation of the tissue bulk properties is achieved via solving the same optimization problem as shown above, except that the unknown space is compressed dramatically and contains only a single set of parameters, one parameter per unknown specie. 
 
 Using the general reconstruction equation Eq. \ref{eq:multispectral}, the bulk optical properties can be estimated by solving the below equation
 \begin{equation}\label{eq:multispectralbulk}
@@ -819,12 +818,14 @@ Similarly, for the under-determined form, we have
 \end{array}\right)
 +\lambda I\right]^{-1}\mathbf{\Delta\Phi}
 \end{eqnarray}
-where the Jacobian blocks $\mathbf{J}_k$ are the Jacobians corresponding to each optical property (chromorphore concentrations, absorption, scattering etc) defined on the nodes.
+where the Jacobian blocks $\mathbf{J}_k$ are the Jacobians corresponding to each optical property (chromorphore concentrations, absorption, scattering etc.) defined on the nodes.
 
 In Deng 2015, we propose a fast algorithm to compute the above under-determined form by first computing the QR decomposition of $L$ as $L=QR$, and then compute $R^{-1}$ and construct an intermediate matrix $Z_i=\mathbf{J}_iR^{-1}$. Therefore, we have $\mathbf{C_\mu}\mathbf{J}_i=R^{-1}Z^T$ and $\mathbf{J}_i\mathbf{C_\mu}\mathbf{J}^T_i=Z_iZ^T$. 
-Replacing these two terms into (\ref{eq:underLTL}), we can solve for the under-determined solution more efficiently.
+Expanding these two terms in (\ref{eq:underLTL}), we can solve for the under-determined solution more efficiently.
 
-\section{Additional techniques}
+\section{Advanced reconstruction techniques}
+
+To be expanded.
 
 \subsection{Dual-mesh method for solving decoupled forward and inverse problems}
 
@@ -842,8 +843,9 @@ Replacing these two terms into (\ref{eq:underLTL}), we can solve for the under-d
 
 \chapter{Software implementations}
 
-\chapter{Example implementations}
+To be expanded.
 
+\clearpage
 
 \bibliographystyle{unsrt}
 \addcontentsline{toc}{chapter}{Bibliography}
