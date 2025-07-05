@@ -6,6 +6,16 @@
 \usepackage{fancyhdr}                    % Fancy Header and Footer
 \usepackage{setspace}                    % Line spacing
 \usepackage{txfonts}                     % Public Times New Roman text & math font
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=blue,
+    }
+
 %%% Fancy Header %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Fancy Header Style Options
 \pagestyle{fancy}                       % Sets fancy header and footer
@@ -29,37 +39,33 @@
     \if@twocolumn\hbox{}\newpage\fi\fi\fi}
 \makeatother
 
-\title{Redbird \-- a 3D finite element based non-linear image reconstruction algorithm \-- theory and implementation}
+\title{Redbird -- a comprehensive model-based image reconstruction platform for diffuse optical tomography and microwave tomography}
 
 \author{Qianqian Fang}
 
-\date{\today}
+\date{Version: 0.5}
 
 
 \begin{document}
 \maketitle              % you need to define \title{..}
 
-\chapter{Introduction}
+\chapter{History}
 
-Redbird-m is a MATLAB toolbox designed for solving the forward and inverse
+Redbird is an open-source MATLAB/GNU Octave toolbox designed for solving the forward and inverse
 problems for diffuse optical tomography (DOT), with the additional support of 
-several other non-linear model-based imaging modalities. Redbird-m was ported from 
-Redbird - a FORTRAN90 based software written by the same author.
-In the forward modeling, a 3D finite element method (FEM)
-facilitated by an iterative multi-right-hand-side quasi-minimal residual (QMR) solver was used to model
-the forward solution for RF and CW light diffusion. The 3D images for tissue chromorphore 
-concentrations and tissue scattering coefficients were
-reconstructed with an iterative Gauss-Newton method where the
-Jacobian matrix was build by the nodal adjoint method. A simultaneous 
-source-detector (SD) coupling coefficient estimation process was 
-implemented in conjunction with the optical parameter reconstruction. 
+several other non-linear model-based imaging modalities. Redbird was ported from 
+Redbird90~\cite{Fang2008} -- a FORTRAN90 based DOT image reconstruction software written by the same author, Dr. Qianqian Fang, between 2005 and 2008. The FORTRAN90-based Redbird90 was derived from an earlier implementation, code-named ``WhiteDragon''~\cite{Fang2004, Fang2009IEEE}, also developed by Dr. Fang, between 2001 and 2005 as part of his PhD dissertation~\cite{Fang2004thesis}, designed to perform iterative 3-D microwave tomography (MWT) image reconstructions~\cite{FangThesis}. The majority of the functionalities in WhiteDragon, including the 3-D finite element method (FEM) for forward modeling~\cite{Fang2004}, Gauss-Newton based nonlinear inverse solver~\cite{Fang2009IEEE}, a multi-right-hand-side quasi-minimal residual (BL-QMR)~\cite{Boyse1996} sparse linear solver, the adjoint method~\cite{Fang2004} for building Jacobians, and a dual-mesh reconstruction approach~\cite{Paulsen1995}, had been inherited to Redbird90, and subsequently ported to Redbird. To extend the modality from MWT to DOT, Redbird further introduced multi-spectral DOT reconstruction, derived from the multi-spectral MWT reconstruction algorithm developed in Dr. Fang's thesis~\cite{FangThesis}, a compositional-prior-guided DOT reconstruction~\cite{Fang2010,Deng2015a}, as well as a simultaneous source-detector (SD) coupling coefficient estimation~\cite{Boas2001,Schweiger2007}. 
+
+Both names ``Redbird'' and ``WhiteDragon'' were rooted in ancient Chinese astrology. In ancient China, astrologists partitioned the sky into 4 quadrants -- each named after an animal deity that the constellations resemble: East -- pale/white dragon, West -- white tiger, North -- black turtle, and South -- red bird. The name ``Redbird'' was selected because DOT uses red and near-infrared light for imaging.
+
 This document summarizes the mathematical treatment for the forward 
 and inverse problems used in this algorithm.
 
 \chapter{Mathematical models}
 
-\section{Mathematical derivations for the forward model}
-The diffusion equation in the time-domain can be expressed as
+\section{DOT forward model}
+
+The diffusion equation in the time-domain can be expressed as~\cite{Arridge1999}
 \begin{equation}
 \label{eq:diffusionTD} -\nabla\cdot
 D(r)\nabla\Phi(r,t)+\mu_a(r)\Phi(r,t)+\frac{1}{c}\frac{\partial
@@ -82,7 +88,7 @@ where $M$ is the total number of basis functions, over the forward space $\Omega
 identity
 \begin{equation}
 \label{eq:veciden}\nabla\cdot f(r)\vec{g}(r)=f(r)\nabla\cdot
-\vec{g}(r)+\vec{g}(r)\cdot\nabla f(r)
+\vec{g}(r)+\vec{g}(r)\cdot\nabla f(r),
 \end{equation}
 we get
 \begin{eqnarray}
@@ -90,13 +96,13 @@ we get
 -\int_{\Omega}{(D(r)\nabla^2\Phi(r))\varphi_j(r)dr}&-&\int_{\Omega}{\nabla D(r)\cdot\nabla\Phi(r)
 \varphi_j(r)dr}\\\nonumber &+&\int_{\Omega}
 {\left(\mu_a(r)+\frac{j\omega}{c}\right)\varphi_j(r)\Phi(r)dr}=\int_{\Omega}
-{S_0(r)\varphi_j(r)dr}
+{S_0(r)\varphi_j(r)dr}.
 \end{eqnarray}
 Assume $D(r)$ is constant for each forward element, i.e. element-based properties, 
 we have $\nabla D(r)=0$ and the second term in (\ref{eq:femstep1}) becomes zero. 
 However, if we define the optical properties on the nodes using a reconstruction mesh,
 the second term will be non-zero. In this case, we expand $D(r)$ and $\mu_{a}(r)$ by
-piece-wise linear basis functions
+piecewise linear basis functions
 \begin{equation}
 \label{eq:parammesh}D(r)=\sum_{i}D_i\phi_i(r) \\
 \mu_{a}(r)=\sum_{i}\mu_{a_i}\phi_i(r)
@@ -160,7 +166,7 @@ leaving
 S_0(r)\varphi_j(r)\right\rangle
 \end{eqnarray}
 
-However, it has been shown in Haskell 1994, the partial current boundary
+However, it has been shown in Haskell \emph{et al.}~\cite{Haskell1994}, the partial current boundary
 condition is more accurate. In this boundary condition, the fluence
 satisfies the following condition on the boundary $\partial\Omega$
 
@@ -287,14 +293,14 @@ For element-based $D$ Jacobian, we have
 \mathbf{H}_e&=&\left[\frac{\partial
 a_{i,j}}{D^{e}}\right]\\&=&\sum_e\frac{1}{(6V_e)^2}\left(
 \begin{array}{llll}
-a_1a_1+b_1b_1+c_1c_1 & a_1a_2+b_1b_2+c_1c_2 & a_1a_3+b_1b_3+c_1c_3 & a_1a_4+b_1b_4+c_1c_4 \\
-a_2a_1+b_2b_1+c_2c_1 & a_2a_2+b_2b_2+c_2c_2 & a_2a_3+b_2b_3+c_2c_3 & a_2a_4+b_2b_4+c_2c_4 \\
-a_3a_1+b_3b_1+c_3c_1 & a_3a_2+b_3b_2+c_3c_2 & a_3a_3+b_3b_3+c_3c_3 & a_3a_4+b_3b_4+c_3c_4 \\
-a_4a_1+b_4b_1+c_4c_1 & a_4a_2+b_4b_2+c_4c_2 & a_4a_3+b_4b_3+c_4c_3 & a_4a_4+b_4b_4+c_4c_4
+\mathbf{C}_1\cdot\mathbf{C}_1 & \mathbf{C}_1\cdot\mathbf{C}_2 & \mathbf{C}_1\cdot\mathbf{C}_2 & \mathbf{C}_1\cdot\mathbf{C}_4\\
+\mathbf{C}_2\cdot\mathbf{C}_1 & \mathbf{C}_2\cdot\mathbf{C}_2 & \mathbf{C}_2\cdot\mathbf{C}_2 & \mathbf{C}_2\cdot\mathbf{C}_4\\
+\mathbf{C}_3\cdot\mathbf{C}_1 & \mathbf{C}_3\cdot\mathbf{C}_2 & \mathbf{C}_3\cdot\mathbf{C}_2 & \mathbf{C}_3\cdot\mathbf{C}_4\\
+\mathbf{C}_4\cdot\mathbf{C}_1 & \mathbf{C}_4\cdot\mathbf{C}_2 & \mathbf{C}_4\cdot\mathbf{C}_2 & \mathbf{C}_5\cdot\mathbf{C}_4
 \end{array}
 \right)
 \end{eqnarray}
-where $a_i,b_i,c_i (i=1,4)$ are the linear coefficients in the expressions of the basis functions $\varphi_i$ as
+where $\mathbf{C}_i = [a_i,b_i,c_i] (i=1,4)$ are the linear coefficients in the expressions of the basis functions $\varphi_i$ as
 \begin{equation}
 \left(
 \begin{array}{l}
@@ -627,7 +633,7 @@ and the corresponding solutions are
 The tissue bulk optical property refers to the set of averaged optical property across a heterogeneous domain. The estimation of the tissue bulk properties is achieved via solving the same optimization problem as shown above, except that the unknown space is compressed dramatically and contain only a single set of parameters, one parameter per unknown specie. 
 
 Using the general reconstruction equation Eq. \ref{eq:multispectral}, the bulk optical properties can be estimated by solving the below equation
-\begin{equation}\label{eq:multispectral}
+\begin{equation}\label{eq:multispectralbulk}
 \left(
 \begin{array}{llll}
 \sum_i{J}_{c}(\lambda_1) & \sum_i{J}_{a}(\lambda_1) & \sum_i{J}_b(\lambda_1) & \sum_i{J}_{sd}(\lambda_1)\\
@@ -656,8 +662,8 @@ Using the general reconstruction equation Eq. \ref{eq:multispectral}, the bulk o
 \end{equation}
 where $\sum_i$ denotes the summation of all the columns (the dimension corresponds to the unknowns) of the Jacobian matrices and $\overline{\boldsymbol{\Delta}{c_i}}$ is the update to correct the $i$-th bulk optical property from the initial background value.
 
-The above optical property fitting algorithm can be generalized in the below two scenarios. In the first case, where a piece-wise constant segmentation is provided (as priors), the above equation can be modified to fit multiple sets of optical property, one for each segmentation
-\begin{equation}\label{eq:multispectral}
+The above optical property fitting algorithm can be generalized in the below two scenarios. In the first case, where a piecewise constant segmentation is provided (as priors), the above equation can be modified to fit multiple sets of optical property, one for each segmentation
+\begin{equation}\label{eq:multispectralseg}
 \left(
 \begin{array}{llll}
 \sum_{i\in\Omega_1}{J}(\lambda_1) & \sum_{i\in\Omega_2}{J}(\lambda_1) & \cdots & \sum_{i\in\Omega_{N_s}}{J}(\lambda_1) \\
@@ -680,14 +686,14 @@ The above optical property fitting algorithm can be generalized in the below two
 \cdots
 \end{array}\right)
 \end{equation}
-where $\Delta\mu_{\Omega_i}=\left[\overline{c_{HbO,\Omega_i}},\overline{c_{HbR,\Omega_i}},\cdots\right]^T$ is the averaged optical properties for the $i$-th segment. The above segmentation-based bulk-property fitting method is sometimes referred to as the ``hard-priors''.
+where $\Delta\mu_{\Omega_i}=\left[\overline{c_{HbO,\Omega_i}},\overline{c_{HbR,\Omega_i}},\cdots\right]^T$ is the average optical properties for the $i$-th segment. The above segmentation-based bulk-property fitting method is sometimes referred to as the ``hard-priors''.
 
 If a probabilistic segmentation is provided to replace the binary segmentations, where every node is represented as a set of probabilities (or fraction of volumes) of being different tissue types, so that the probility map is defined as a matrix
 \begin{equation}
 P=\left\{p^k_{i}\right\}_{i=1,\cdots,N; k=1,\cdots,N_s}
 \end{equation}
 where $0\le p^k_{i} \le 1$ is the probability for the $i$-th node/voxel to be tissue type $k$, and $\sum_k{p^k_{i}}=1$ holds for any $i$. The above segmentation-based bulk-property fitting equation can be generalized to
-\begin{equation}\label{eq:multispectral}
+\begin{equation}\label{eq:multispectralfuzzysegbulk}
 \left(
 \begin{array}{c}
 \mathbf{J}(\lambda_1)P\\
@@ -710,14 +716,14 @@ where $0\le p^k_{i} \le 1$ is the probability for the $i$-th node/voxel to be ti
 \cdots
 \end{array}\right)
 \end{equation}
-Once the tissue-type averaged optical property update is calculated using the above equation, the node values are then updated by $\{\Delta\mu_i\}_i=P\times\{\overline{\Delta\mu_{\Omega_k}}\}_{k=1,\cdots,N_s}$.
+Once the tissue-type averaged optical property update is calculated using the above equation, the node values are subsequently updated by $\{\Delta\mu_i\}_i=P\times\{\overline{\Delta\mu_{\Omega_k}}\}_{k=1,\cdots,N_s}$.
 
 \section{Defining priors using the $L$-matrix}\label{sec:Lmatrix}
-In many cases, Eq. \ref{eq:objfunglsprior} is solved in the below form under the context of Tikhonov regularization
+In many cases, Eq. \ref{eq:objfunglsprior} is solved in the following form in the context of Tikhonov regularization
 \begin{equation}
 \underset{\mu}{\arg\min} \, || \boldsymbol{y-\Phi(\mu)} ||^2_2 + \lambda|| L(\boldsymbol{\mu-\mu_0}) ||^2_2
 \end{equation}
-Comparing with Eq. \ref{eq:objfunglsprior}, it is clear that the regularization matrix ($L$) is the assumed inverse square-root of the covariance matrix of the unknowns ($\mathbf{C_\mu}^{-1/2}$), determined by the user as the \emph{a prior} information.
+Compared with Eq. \ref{eq:objfunglsprior}, it is clear that the regularization matrix ($L$) is the assumed inverse square-root of the covariance matrix of unknowns ($\mathbf{C_\mu}^{-1/2}$), determined by the user as the \emph{a prior} information.
 
 Various non-identity $L$-matrices have been proposed. For example, it can be defined as a simple Laplacian to penalize rapid changes between neighboring nodes or voxels. For an FEM-mesh based solution, $L$ can be defined as 
 \begin{equation}
@@ -727,7 +733,7 @@ l_{i,j}=\left\{\begin{array}{cl}
 N_i & \textrm{if $i=j$}\\
 \end{array}\right.
 \end{equation}
-where $N_i$ is the degree of the node, denoting the total neighbor count of node $i$.
+where $N_i$ is the degree of the node, denoting the total neighbor count of the node $i$.
 
 The above Laplacian operator can be also applied to segmented domains derived from prior information (such as a co-registered structural-scan of the same volume), where the nodes/elements within the same tissue regions are labeled identically, we have
 \begin{equation}
@@ -751,10 +757,10 @@ where $h$ is the average distance between nodes, and $h_f$ is the desired averag
 
 \section{Compositional-prior guided reconstructions}
 
-The ``compositional prior'' guided reconstruction algorithm was proposed in 2010. In this algorithm, the $L$ matrix is also derived from a co-registered structure-image but with the added ability to fully utilize the detailed gray-scale image features. Different from all above mentioned prior-guided reconstruction algorithms, where the spatial nodes are initially segmented as piece-wise constant regions, the compositional prior utilizes probabilistic segmentations of the tissue, as described in Section \ref{sec:bulkfitting}. 
+The ``compositional prior'' guided reconstruction algorithm was proposed in 2010~\cite{Fang2010}. In this algorithm, the $L$ matrix is also derived from a co-registered structure-image but with the added ability to fully utilize the detailed gray-scale image features~\cite{Deng2015a}. Different from all above mentioned prior-guided reconstruction algorithms, where spatial nodes are initially segmented as piecewise constant regions, the compositional prior utilizes probabilistic segmentation of the tissue, as described in Section \ref{sec:bulkfitting}. 
 
 In short, the compositional prior approach penalizes reconstruct recovered property differences in the compositional space. It
-computes the similarities in tissue compositions between spatial locations, derived from the intensity maps from \emph{a priori} structural images, and build a weighted graph connecting all nodes in the compositional space ($N_s$ dimensional space with $p^k$ as the coordinates), then create the $L$-matrix as the Laplacian of the weighted graph in the compositional space.
+computes the similarities in tissue compositions between spatial locations, derived from the intensity maps from \emph{a priori} structural images, and build a weighted graph connecting all nodes in the compositional space ($N_s$ dimensional space with $p^k$ as coordinates), then create the $L$-matrix as the Laplacian of the weighted graph in the compositional space.
 
 Specifically, the $L$-matrix encodes the compositional prior is constructed as
 \begin{equation}
@@ -768,7 +774,7 @@ where $||\cdot||_2$ is the $L_2$-norm, $N_s$ is the total number of tissue types
 
 Parameter $u_{i,j}$ is the weight between nodes $i$ and $j$, defined as the average per-component Euclidean distance in the compositional space between the two nodes, as $u_{i,j}=\alpha-||C_i-C_j||_2/N_s\ge 0$, and $d_i$ and $d_j$ are the ``degrees'' of the two nodes in a weighted graph, defined as $d_i=\sum_{k,||C_i-C_k||_2<\alpha N_s}{u_{i,k}}$.
 
-As one can see, the above definition of $L$-matrix does not require piece-wise constant segmentations, and avoids the loses of the gray-scale features from the structural images. The probabilistic segmentation is also better suited for medical imaging because a small region in the biological tissue typically contains a mixture of various types of tissues. The tissue probability can be treated as the volume fractions of different tissue types inside the smallest spatial discretization unit, such as a voxel or a tetrahedron.
+As one can see, the above definition of $L$-matrix does not require piecewise constant segmentations, and avoids the loses of the gray-scale features from the structural images. The probabilistic segmentation is also better suited for medical imaging because a small region in the biological tissue typically contains a mixture of various types of tissues. The tissue probability can be treated as the volume fractions of different tissue types inside the smallest spatial discretization unit, such as a voxel or a tetrahedron.
 
 It is apparent that there are many ways to segment the \emph{a priori} structural image intensity maps to the probability maps in the compositional space. We call this step as the ``fuzzy segmentation''. The above proposed algorithm is quite general and can accommodate many fuzzy segmentation methods. A simple linear mapping was proposed in the original paper, and various alternative mapping methods, including those based on the Gaussian-mixture models and threshold-based algorithms were studied in Deng 2015. From the latter paper, we concluded that the the reconstructed images are not sensitive to the fuzzy segmentation algorithm; however, all of these methods showed significantly around $2\times$ errors in the reconstructed images.
 
@@ -824,7 +830,7 @@ Replacing these two terms into (\ref{eq:underLTL}), we can solve for the under-d
 
 \subsection{Multiple right-hand-side linear solvers for accelerating matrix solutions}
 
-\subsection{Simultaneous use of continuous-wave and frequency-domain data}
+\subsection{Joint use of continuous-wave and frequency-domain data}
 
 \subsection{Matrix scaling and variance equalization}
 
@@ -834,12 +840,13 @@ Replacing these two terms into (\ref{eq:underLTL}), we can solve for the under-d
 
 \subsection{Other supported linear and least-square solvers}
 
-\bibliographystyle{plain}
-\addcontentsline{toc}{chapter}{Bibliography}
-\bibliography{rbmanual}
-
 \chapter{Software implementations}
 
 \chapter{Example implementations}
+
+
+\bibliographystyle{unsrt}
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{redbird_manual}
 
 \end{document}
