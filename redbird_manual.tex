@@ -244,16 +244,16 @@ Taking the derivative of $\mu_a$ and $D$ on both sides of
 \frac{\partial \mathbf{A}}{\partial
 \mu_a^k}{\boldsymbol\Phi}&=&-\mathbf{A}\frac{\partial {\boldsymbol\Phi}}{\partial \mu_a^k}\\
 \frac{\partial \mathbf{A}}{\partial
-D_k}{\boldsymbol\Phi}&=&-\mathbf{A}\frac{\boldsymbol\Phi}{\partial
-D^k}
+D_k}{\boldsymbol\Phi}&=&-\mathbf{A}\frac{\partial {\boldsymbol\Phi}}{\partial
+D_k}
 \end{eqnarray}
 where the elements of matrix $\frac{\partial \mathbf{A}}{\partial
 \mu_a^k}$ and $\frac{\partial \mathbf{A}}{\partial D_k}$ are
 written as
 \begin{eqnarray}
 k_{i,j}=\frac{\partial
-a_{i,j}}{\mu_a^k}&=&\left\langle\phi_k(r)\varphi_i(r)\varphi_j(r)\right\rangle\\
-h_{i,j}=\frac{\partial a_{i,j}}{D_k}&=&\left\langle
+a_{i,j}}{\partial \mu_a^k}&=&\left\langle\phi_k(r)\varphi_i(r)\varphi_j(r)\right\rangle\\
+h_{i,j}=\frac{\partial a_{i,j}}{\partial D_k}&=&\left\langle
 \phi_k(r)\nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle
 \end{eqnarray}
 respectively.
@@ -261,8 +261,8 @@ respectively.
 Similarly, taking derivatives with respect to $D_e$ and $\mu_a^{e}$ yields
 \begin{eqnarray}
 k_{i,j}=\frac{\partial
-a_{i,j}}{\mu_a^{e}}&=&\left\langle\varphi_i(r)\varphi_j(r)\right\rangle\\
-h_{i,j}=\frac{\partial a_{i,j}}{D_e}&=&\left\langle
+a_{i,j}}{\partial \mu_a^{e}}&=&\left\langle\varphi_i(r)\varphi_j(r)\right\rangle\\
+h_{i,j}=\frac{\partial a_{i,j}}{\partial D_e}&=&\left\langle
 \nabla\varphi_i(r)\cdot\nabla\varphi_j(r)\right\rangle
 \end{eqnarray}
 respectively. Again, the angular bracket $\langle\cdot\rangle$ represents volume integration inside
@@ -270,13 +270,13 @@ an element, i.e.
 \begin{equation}
 \langle f(r) \rangle=\int_{\Omega_e}f(r)dr
 \end{equation}
-Therefore, the deriatives to $\mu_a^e$ can be calculated using this relationship:
+Therefore, the derivatives to $\mu_a^e$ can be calculated using this relationship:
 \begin{equation}
 \int_{\Omega_e}\varphi_1^l\varphi_2^m\varphi_3^n\varphi_4^sdr=\frac{l!m!n!s!}{(l+m+n+s+3)!}6V_e
 \end{equation}
 As a result, for element-based $\mu_a$ Jacobian, we have
 \begin{equation}
-\mathbf{K}_e=\left[\frac{\partial a_{i,j}}{\mu_a^{e}}\right]=\sum_e\frac{V_e}{20}\left(
+\mathbf{K}_e=\left[\frac{\partial a_{i,j}}{\partial \mu_a^{e}}\right]=\sum_e\frac{V_e}{20}\left(
 \begin{array}{llll}
 2 & 1 & 1 & 1 \\
 1 & 2 & 1 & 1 \\
@@ -288,12 +288,12 @@ As a result, for element-based $\mu_a$ Jacobian, we have
 For element-based $D$ Jacobian, we have
 \begin{eqnarray}\nonumber
 \mathbf{H}_e&=&\left[\frac{\partial
-a_{i,j}}{D^{e}}\right]\\&=&\sum_e\frac{1}{(6V_e)^2}\left(
+a_{i,j}}{\partial D_{e}}\right]\\&=&\sum_e\frac{1}{(6V_e)^2}\left(
 \begin{array}{llll}
-\mathbf{C}_1\cdot\mathbf{C}_1 & \mathbf{C}_1\cdot\mathbf{C}_2 & \mathbf{C}_1\cdot\mathbf{C}_2 & \mathbf{C}_1\cdot\mathbf{C}_4\\
-\mathbf{C}_2\cdot\mathbf{C}_1 & \mathbf{C}_2\cdot\mathbf{C}_2 & \mathbf{C}_2\cdot\mathbf{C}_2 & \mathbf{C}_2\cdot\mathbf{C}_4\\
-\mathbf{C}_3\cdot\mathbf{C}_1 & \mathbf{C}_3\cdot\mathbf{C}_2 & \mathbf{C}_3\cdot\mathbf{C}_2 & \mathbf{C}_3\cdot\mathbf{C}_4\\
-\mathbf{C}_4\cdot\mathbf{C}_1 & \mathbf{C}_4\cdot\mathbf{C}_2 & \mathbf{C}_4\cdot\mathbf{C}_2 & \mathbf{C}_5\cdot\mathbf{C}_4
+\mathbf{C}_1\cdot\mathbf{C}_1 & \mathbf{C}_1\cdot\mathbf{C}_2 & \mathbf{C}_1\cdot\mathbf{C}_3 & \mathbf{C}_1\cdot\mathbf{C}_4\\
+\mathbf{C}_2\cdot\mathbf{C}_1 & \mathbf{C}_2\cdot\mathbf{C}_2 & \mathbf{C}_2\cdot\mathbf{C}_3 & \mathbf{C}_2\cdot\mathbf{C}_4\\
+\mathbf{C}_3\cdot\mathbf{C}_1 & \mathbf{C}_3\cdot\mathbf{C}_2 & \mathbf{C}_3\cdot\mathbf{C}_3 & \mathbf{C}_3\cdot\mathbf{C}_4\\
+\mathbf{C}_4\cdot\mathbf{C}_1 & \mathbf{C}_4\cdot\mathbf{C}_2 & \mathbf{C}_4\cdot\mathbf{C}_3 & \mathbf{C}_4\cdot\mathbf{C}_4
 \end{array}
 \right)
 \end{eqnarray}
@@ -340,11 +340,26 @@ z_1 & z_2 & z_3 & z_4
 \end{equation}
 and the element volume $V_e=\textrm{det}(\mathbf{J}_e)/6$
 
+From (\ref{eq:matrix}), $\partial{\boldsymbol\Phi}_s/\partial\mu_a=-\mathbf{A}^{-1}\left(\partial\mathbf{A}/\partial\mu_a\right){\boldsymbol\Phi}_s$.
+The measurement at the $r$-th detector is $\Phi_{s,r}=\mathbf{e}_r^T{\boldsymbol\Phi}_s$, and the adjoint field
+${\boldsymbol\Phi}_r=\mathbf{A}^{-T}\mathbf{e}_r$ is the forward solution with the detector acting as a source
+($\mathbf{A}$ is symmetric). Therefore
+\begin{equation}
+\frac{\partial\Phi_{s,r}}{\partial\mu_a}=-{\boldsymbol\Phi}_r^T\frac{\partial\mathbf{A}}{\partial\mu_a}{\boldsymbol\Phi}_s,
+\qquad
+\frac{\partial\Phi_{s,r}}{\partial D}=-{\boldsymbol\Phi}_r^T\frac{\partial\mathbf{A}}{\partial D}{\boldsymbol\Phi}_s .
+\end{equation}
+Because the forward and adjoint fields are positive, the $\mu_a$ Jacobian is negative everywhere:
+increasing $\mu_a$ decreases the detected fluence. The $D$ Jacobian carries the same leading minus
+sign, but its sign varies in space with that of $\nabla\Phi_s\cdot\nabla\Phi_r$. This convention, including
+the minus sign, is used in Redbird's \texttt{rbjac}/\texttt{rbjacmuafast} and in the adjoint Jacobians
+(\texttt{jmua}, \texttt{jd}) returned by MCX and MMC.
+
 For the Jacobian corresponding to the $\mu_a^e$ in the $e$-th element, the 
 element-based Jacobian can be expressed as
 \begin{eqnarray}\nonumber
 J_{\mu_a}((s,r),e)&=&\frac{\partial
-\Phi_{s,r}}{d\mu_a^{e}}\\&=&\left(\mathbf{K}_e{\boldsymbol\Phi}_s^e\right)^T{\boldsymbol\Phi}_r^e
+\Phi_{s,r}}{\partial\mu_a^{e}}\\&=&-\left(\mathbf{K}_e{\boldsymbol\Phi}_s^e\right)^T{\boldsymbol\Phi}_r^e
 \end{eqnarray}
 where vectors $\boldsymbol{\Phi}_s^e$ and $\boldsymbol{\Phi}_r^e$
 are defined by $\boldsymbol{\Phi}_s^e=\{\Phi_s(\vec{p}_k)\}$,
@@ -357,7 +372,7 @@ the $r$-th detector with illumination of the $s$-th source is
 expressed as
 \begin{eqnarray}\nonumber
 J_{\mu_a}((s,r),\tau)&=&\frac{\partial
-\Phi_{s,r}}{d\mu_a^{\tau}}\\&=&\sum_{n\in\Omega_\tau}\left(\frac{\sum_{e\in\Omega_n}
+\Phi_{s,r}}{\partial\mu_a^{\tau}}\\&=&-\sum_{n\in\Omega_\tau}\left(\frac{\sum_{e\in\Omega_n}
 V_e}{4}\right)\phi(\vec{p}_n)\Phi_s(\vec{p}_n)\Phi_r(\vec{p}_n)
 \end{eqnarray}
 where $\sum_{n\in\Omega_\tau}$ refers to the summation over the
@@ -373,7 +388,7 @@ element-based adjoint method, which is written as
 
 \begin{eqnarray}\nonumber
 J_{D}((s,r),\tau)&=&\frac{\partial
-\Phi_{s,r}}{dD_{\tau}}\\&=&\sum_{e\in\Omega_\tau}\left(\mathbf{H}_\tau^e{\boldsymbol\Phi}_s^e\right)^T{\boldsymbol\Phi}_r^e
+\Phi_{s,r}}{\partial D_{\tau}}\\&=&-\sum_{e\in\Omega_\tau}\left(\mathbf{H}_\tau^e{\boldsymbol\Phi}_s^e\right)^T{\boldsymbol\Phi}_r^e
 \end{eqnarray}
 where $\sum_{e\in\Omega_\tau}$ denotes the summation over all
 elements that in the immediate vicinity of the parameter node $\tau$;
@@ -510,18 +525,22 @@ vectors of the misfit. The above equation can be rewrite to
 
 where
 \begin{eqnarray}\nonumber
-\mathbf{J}_1&=&\frac{\Re e{\boldsymbol{\Delta\Phi}}\Re e{\boldsymbol{\mathbf{J}_{\mu_a}}}
-+\Im m{\boldsymbol{\Delta\Phi}}\Im m{\boldsymbol{\mathbf{J}_{\mu_a}}} }{|\boldsymbol{\Delta\Phi}|^2} \\\nonumber
-\mathbf{J}_2&=&\frac{\Re e{\boldsymbol{\Delta\Phi}}\Im m{\boldsymbol{\mathbf{J}_{\mu_a}}}
--\Im m{\boldsymbol{\Delta\Phi}}\Re e{\boldsymbol{\mathbf{J}_{\mu_a}}} }{|\boldsymbol{\Delta\Phi}|^2} \\
-\mathbf{J}_3&=&\frac{\Re e{\boldsymbol{\Delta\Phi}}\Re e{\boldsymbol{\mathbf{J}_{D}}}
-+\Im m{\boldsymbol{\Delta\Phi}}\Im m{\boldsymbol{\mathbf{J}_{D}}} }{|\boldsymbol{\Delta\Phi}|^2} \\\nonumber
-\mathbf{J}_4&=&\frac{\Re e{\boldsymbol{\Delta\Phi}}\Im m{\boldsymbol{\mathbf{J}_{D}}}
--\Im m{\boldsymbol{\Delta\Phi}}\Re e{\boldsymbol{\mathbf{J}_{D}}} }{|\boldsymbol{\Delta\Phi}|^2} \\\nonumber
+\mathbf{J}_1&=&\frac{\Re e{\boldsymbol{\Phi}^{calc}}\Re e{\boldsymbol{\mathbf{J}_{\mu_a}}}
++\Im m{\boldsymbol{\Phi}^{calc}}\Im m{\boldsymbol{\mathbf{J}_{\mu_a}}} }{|\boldsymbol{\Phi}^{calc}|^2} \\\nonumber
+\mathbf{J}_2&=&\frac{\Re e{\boldsymbol{\Phi}^{calc}}\Im m{\boldsymbol{\mathbf{J}_{\mu_a}}}
+-\Im m{\boldsymbol{\Phi}^{calc}}\Re e{\boldsymbol{\mathbf{J}_{\mu_a}}} }{|\boldsymbol{\Phi}^{calc}|^2} \\
+\mathbf{J}_3&=&\frac{\Re e{\boldsymbol{\Phi}^{calc}}\Re e{\boldsymbol{\mathbf{J}_{D}}}
++\Im m{\boldsymbol{\Phi}^{calc}}\Im m{\boldsymbol{\mathbf{J}_{D}}} }{|\boldsymbol{\Phi}^{calc}|^2} \\\nonumber
+\mathbf{J}_4&=&\frac{\Re e{\boldsymbol{\Phi}^{calc}}\Im m{\boldsymbol{\mathbf{J}_{D}}}
+-\Im m{\boldsymbol{\Phi}^{calc}}\Re e{\boldsymbol{\mathbf{J}_{D}}} }{|\boldsymbol{\Phi}^{calc}|^2} \\\nonumber
 \mathbf{J}_5&=& \frac{1}{|sd|} \\\nonumber
 \mathbf{J}_6&=& I \nonumber
 \end{eqnarray}
-where $J_5$ and $J_6$ are approximate versions of the $SD$ Jacobian in this case.
+i.e. $\mathbf{J}_1+i\mathbf{J}_2=\mathbf{J}_{\mu_a}/\boldsymbol{\Phi}^{calc}$ and $\mathbf{J}_3+i\mathbf{J}_4=\mathbf{J}_{D}/\boldsymbol{\Phi}^{calc}$
+(row-wise), because $\partial\log\Phi=\partial\Phi/\Phi$; the division is by the model prediction
+$\boldsymbol{\Phi}^{calc}$, not by the misfit. Since $\mathbf{J}_{\mu_a}<0$, the log-amplitude (Rytov) Jacobian
+$\mathbf{J}_1$ is also negative, i.e. the optical density $-\log|\Phi|$ increases with $\mu_a$.
+$J_5$ and $J_6$ are approximate versions of the $SD$ Jacobian in this case.
 
 \section{Multi-spectral image reconstruction}
 The multi-spectral image reconstruction algorithm was initially developed by Dr. Fang in the context of microwave tomography~\cite{Fang2004a, FangThesis}. Dr. Fang's multi-spectral algorithm had inspired Shuba Srinivasan, a PhD student at the time working under the supervision of Dr. Brian Pogue in the same Department. Both Dr. Fang and Shuba were co-supervised by Dr. Keith Paulsen. A year later, Srinivasan \emph{et al.} ported this algorithm to NIR imaging and achieved simultaneous chromophore reconstruction using multiple wavelengths~\cite{Srinivasan2025} (unfortunately, the authors failed to cite the original multi-spectral algorithm paper~\cite{Fang2004a}).
@@ -576,10 +595,11 @@ and $\mathbf{J}_{c}=\left[\mathbf{J}_{HbO}, \mathbf{J}_{HbR}, \mathbf{J}_{water}
 \end{equation}
 $i=$\{HbO, HbR, water, lipids, ...\}; also, we have
 \begin{eqnarray}
-\mathbf{J}_a(\lambda)&=&-\frac{\lambda^{b}}{3a^2} = -\left[3D^2(\lambda)\lambda^{-b}\right]\mathbf{J}_D(\lambda)\\
-\mathbf{J}_b(\lambda)&=& \frac{3a\lambda^{-b}}{\log(\lambda)} =\left[D(\lambda)\log(\lambda)\right]\mathbf{J_D(\lambda)}
+\mathbf{J}_a(\lambda)&=&\frac{\partial D}{\partial a}\mathbf{J}_D(\lambda) = -\left[3D^2(\lambda)\lambda^{-b}\right]\mathbf{J}_D(\lambda)\\
+\mathbf{J}_b(\lambda)&=&\frac{\partial D}{\partial b}\mathbf{J}_D(\lambda) = \left[3aD^2(\lambda)\lambda^{-b}\log(\lambda)\right]\mathbf{J}_D(\lambda)\approx\left[D(\lambda)\log(\lambda)\right]\mathbf{J}_D(\lambda)
 \end{eqnarray}
-Here we assume that the $sd$ coefficients are wavelength-independent.
+using $\partial D/\partial\mu_s'=-3D^2$; the last approximation assumes $\mu_a\ll\mu_s'$ (i.e. $3D\mu_s'\approx1$)
+and is the form used in \texttt{rbjacscatpow}. Here we assume that the $sd$ coefficients are wavelength-independent.
 
 \section{Solving the inverse problem}
 The perturbation equation in the 1st order, i.e. Eqs. \ref{eq:multispectral}, \ref{eq:singlewavelength} and \ref{eq:logphase} can be solved using ordinary least-square (OLS), weighted least-square (WLS) or generalized least-square (GLS) methods~\cite{FangThesis}.
